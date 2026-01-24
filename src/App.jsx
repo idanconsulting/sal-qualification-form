@@ -17,6 +17,9 @@ function App() {
   // Form fields
   const [formState, setFormState] = useState({
     meetingHeld: '',
+    noShowReason: '',
+    rescheduleDate: '',
+    rescheduleNotes: '',
     additionalAttendees: '',
     identifiedNeed: '',
     identifiedNeedComment: '',
@@ -64,12 +67,7 @@ function App() {
     setFormState(prev => ({ ...prev, [field]: value }))
   }
 
-  // Auto-submit for "Meeting Held = No/Rescheduled"
-  useEffect(() => {
-    if (formState.meetingHeld === 'No' || formState.meetingHeld === 'Rescheduled') {
-      handleAutoSubmit()
-    }
-  }, [formState.meetingHeld])
+  // No auto-submit - user must click submit for all options
 
   // Auto-submit handler
   const handleAutoSubmit = async () => {
@@ -113,6 +111,13 @@ function App() {
     if (!formState.meetingHeld) {
       setError('Please indicate if the meeting was held')
       return
+    }
+
+    if (formState.meetingHeld === 'No') {
+      if (!formState.noShowReason) {
+        setError('Please select why the meeting didn\'t happen')
+        return
+      }
     }
 
     if (formState.meetingHeld === 'Yes') {
@@ -297,6 +302,62 @@ function App() {
                 ))}
               </div>
             </div>
+
+            {/* Show No-Show questions */}
+            {formState.meetingHeld === 'No' && (
+              <div className="mb-6 bg-red-50 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Why didn't the meeting happen? *
+                </label>
+                <div className="space-y-2 mb-3">
+                  {['No-show (prospect didn\'t attend)', 'Cancelled by prospect', 'Cancelled by AE', 'Technical issues', 'Other'].map(option => (
+                    <label key={option} className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="noShowReason"
+                        value={option}
+                        checked={formState.noShowReason === option}
+                        onChange={(e) => handleChange('noShowReason', e.target.value)}
+                        className="w-4 h-4 text-red-600"
+                      />
+                      <span className="text-gray-700">{option}</span>
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  value={formState.comments}
+                  onChange={(e) => handleChange('comments', e.target.value)}
+                  placeholder="Additional notes (optional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  rows="2"
+                />
+              </div>
+            )}
+
+            {/* Show Rescheduled questions */}
+            {formState.meetingHeld === 'Rescheduled' && (
+              <div className="mb-6 bg-yellow-50 rounded-lg p-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Reschedule Details
+                </label>
+                <div className="mb-3">
+                  <label className="block text-sm text-gray-700 mb-1">New meeting date (if known)</label>
+                  <input
+                    type="date"
+                    value={formState.rescheduleDate}
+                    onChange={(e) => handleChange('rescheduleDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                </div>
+                <textarea
+                  value={formState.rescheduleNotes}
+                  onChange={(e) => handleChange('rescheduleNotes', e.target.value)}
+                  placeholder="Notes about the reschedule (optional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  rows="2"
+                />
+              </div>
+            )}
 
             {/* Show rest of form only if meeting was held */}
             {formState.meetingHeld === 'Yes' && (
@@ -499,15 +560,18 @@ function App() {
               </div>
             )}
 
-            {/* Submit button - only show for "Yes" meetings */}
-            {formState.meetingHeld === 'Yes' && (
+            {/* Submit button - show for all options */}
+            {formState.meetingHeld && (
               <div className="flex justify-end">
                 <button
                   type="submit"
                   disabled={submitting}
                   className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Qualification'}
+                  {submitting ? 'Submitting...' :
+                    formState.meetingHeld === 'Yes' ? 'Submit Qualification' :
+                    formState.meetingHeld === 'No' ? 'Submit No-Show Report' :
+                    'Submit Reschedule'}
                 </button>
               </div>
             )}
