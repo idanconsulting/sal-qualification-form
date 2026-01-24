@@ -1,0 +1,613 @@
+{
+  "name": "SAL Form - Process Submission",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sal-form-submit",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-form-submit",
+      "name": "Webhook - Form Submission",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "sal-form-submit"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.formResponses.meetingHeld }}",
+              "operation": "equals",
+              "value2": "No"
+            }
+          ]
+        }
+      },
+      "id": "if-meeting-not-held",
+      "name": "IF - Meeting Not Held",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.formResponses.meetingHeld }}",
+              "operation": "equals",
+              "value2": "Rescheduled"
+            }
+          ]
+        }
+      },
+      "id": "if-meeting-rescheduled",
+      "name": "IF - Meeting Rescheduled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 500]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "contactId": "={{ $json.body.contactId }}",
+        "updateFields": {
+          "customProperties": {
+            "property": [
+              {
+                "name": "sal_meeting_held",
+                "value": "No"
+              },
+              {
+                "name": "sal_form_submitted_date",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-contact-no-meeting",
+      "name": "Update Contact - Meeting Not Held",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [690, 200],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "contactId": "={{ $json.body.contactId }}",
+        "updateFields": {
+          "customProperties": {
+            "property": [
+              {
+                "name": "sal_meeting_held",
+                "value": "Rescheduled"
+              },
+              {
+                "name": "sal_form_submitted_date",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-contact-rescheduled",
+      "name": "Update Contact - Rescheduled",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [690, 400],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "⚠️ Meeting did not occur"
+            },
+            {
+              "name": "blocks",
+              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Meeting Not Held*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nAE: {{ $json.body.aeName }}\\n\\nPlease follow up to reschedule.\"\n    }\n  }\n]"
+            }
+          ]
+        }
+      },
+      "id": "notify-sdr-no-meeting",
+      "name": "Notify SDR - Meeting Not Held",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [910, 200],
+      "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "📅 Meeting Rescheduled"
+            },
+            {
+              "name": "blocks",
+              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Meeting Rescheduled*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nAE: {{ $json.body.aeName }}\\n\\nPlease coordinate a new meeting time.\"\n    }\n  }\n]"
+            }
+          ]
+        }
+      },
+      "id": "notify-sdr-rescheduled",
+      "name": "Notify SDR - Rescheduled",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [910, 400],
+      "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "contactId": "={{ $json.body.contactId }}",
+        "updateFields": {
+          "customProperties": {
+            "property": [
+              {
+                "name": "sal_meeting_held",
+                "value": "={{ $json.body.formResponses.meetingHeld }}"
+              },
+              {
+                "name": "sal_identified_need",
+                "value": "={{ $json.body.formResponses.identifiedNeed === 'Yes' }}"
+              },
+              {
+                "name": "sal_identified_decision_maker",
+                "value": "={{ $json.body.formResponses.decisionMaker === 'Yes' }}"
+              },
+              {
+                "name": "sal_next_step_commitment",
+                "value": "={{ $json.body.formResponses.nextStep === 'Yes' }}"
+              },
+              {
+                "name": "sal_decision",
+                "value": "={{ $json.body.formResponses.salDecision }}"
+              },
+              {
+                "name": "sal_additional_attendees",
+                "value": "={{ $json.body.formResponses.additionalAttendees }}"
+              },
+              {
+                "name": "sal_qualification_notes",
+                "value": "={{ $json.body.formResponses.comments || '' }}"
+              },
+              {
+                "name": "sal_form_submitted_date",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-contact-full",
+      "name": "Update Contact - Full Qualification",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [690, 700],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.formResponses.salDecision }}",
+              "operation": "equals",
+              "value2": "Accept"
+            }
+          ]
+        }
+      },
+      "id": "switch-sal-decision",
+      "name": "Switch - SAL Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [910, 700],
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.body.formResponses.salDecision }}",
+                    "operation": "equals",
+                    "value2": "Accept"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "accept"
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.body.formResponses.salDecision }}",
+                    "operation": "equals",
+                    "value2": "Reject"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "reject"
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.body.formResponses.salDecision }}",
+                    "operation": "equals",
+                    "value2": "Disqualify"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "disqualify"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "upsert",
+        "companyId": "={{ $json.body.companyId }}",
+        "updateFields": {
+          "customProperties": {
+            "property": [
+              {
+                "name": "sal_qualified",
+                "value": "true"
+              },
+              {
+                "name": "sal_last_qualification_date",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-company-accept",
+      "name": "Update Company - Accepted",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [1130, 600],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "upsert",
+        "dealId": "={{ $json.body.dealId }}",
+        "updateFields": {
+          "stage": "sal_qualified",
+          "customProperties": {
+            "property": [
+              {
+                "name": "sal_qualification_notes",
+                "value": "={{ $json.body.formResponses.comments }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "update-deal-accept",
+      "name": "Update Deal - Move to SAL Stage",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [1350, 600],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      },
+      "notes": "UPDATE: Set correct pipeline stage ID"
+    },
+    {
+      "parameters": {
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "🔄 Lead Rejected - Returned to SDR"
+            },
+            {
+              "name": "blocks",
+              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Lead Status: Rejected*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nReason: {{ $json.body.formResponses.rejectReason }}\\n\\nThis lead has been returned to you.\"\n    }\n  }\n]"
+            }
+          ]
+        }
+      },
+      "id": "notify-sdr-reject",
+      "name": "Notify SDR - Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1130, 800],
+      "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "❌ Lead Disqualified"
+            },
+            {
+              "name": "blocks",
+              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Lead Status: Disqualified*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nNotes: {{ $json.body.formResponses.comments }}\\n\\nThis lead has been disqualified.\"\n    }\n  }\n]"
+            }
+          ]
+        }
+      },
+      "id": "notify-sdr-disqualify",
+      "name": "Notify SDR - Disqualified",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1130, 1000],
+      "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "contactId": "={{ $json.body.contactId }}",
+        "updateFields": {
+          "lifecyclestage": "disqualified"
+        }
+      },
+      "id": "update-lifecycle-disqualify",
+      "name": "Update Contact - Disqualified Lifecycle",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [1350, 1000],
+      "credentials": {
+        "hubspotApi": {
+          "id": "1",
+          "name": "HubSpot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"decision\": $json.body.formResponses.salDecision } }}"
+      },
+      "id": "respond-webhook-success",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 700]
+    }
+  ],
+  "connections": {
+    "Webhook - Form Submission": {
+      "main": [
+        [
+          {
+            "node": "IF - Meeting Not Held",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF - Meeting Rescheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Meeting Not Held": {
+      "main": [
+        [
+          {
+            "node": "Update Contact - Meeting Not Held",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Contact - Full Qualification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Meeting Rescheduled": {
+      "main": [
+        [
+          {
+            "node": "Update Contact - Rescheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Meeting Not Held": {
+      "main": [
+        [
+          {
+            "node": "Notify SDR - Meeting Not Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Rescheduled": {
+      "main": [
+        [
+          {
+            "node": "Notify SDR - Rescheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify SDR - Meeting Not Held": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify SDR - Rescheduled": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Full Qualification": {
+      "main": [
+        [
+          {
+            "node": "Switch - SAL Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - SAL Decision": {
+      "main": [
+        [
+          {
+            "node": "Update Company - Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify SDR - Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify SDR - Disqualified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Company - Accepted": {
+      "main": [
+        [
+          {
+            "node": "Update Deal - Move to SAL Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Deal - Move to SAL Stage": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify SDR - Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify SDR - Disqualified": {
+      "main": [
+        [
+          {
+            "node": "Update Contact - Disqualified Lifecycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Disqualified Lifecycle": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

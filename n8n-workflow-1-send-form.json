@@ -1,0 +1,99 @@
+{
+  "name": "SAL Form - Send to AE",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sal-form-trigger",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Trigger SAL Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "sal-form-trigger"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Get the first item from input array\nconst data = $input.first().json;\n\n// Helper function to safely get property value\nconst getProp = (obj, key) => obj?.[key]?.value || obj?.[key]?.versions?.[0]?.value || null;\n\n// Extract contact properties\nconst contactProps = data.properties || {};\nconst contactId = data.vid || data['canonical-vid'] || getProp(contactProps, 'hs_object_id');\nconst firstName = getProp(contactProps, 'firstname') || '';\nconst lastName = getProp(contactProps, 'lastname') || '';\nconst email = getProp(contactProps, 'email') || '';\nconst sdrOwnerId = getProp(contactProps, 'hubspot_owner_id') || '';\nconst source = getProp(contactProps, 'hs_analytics_source') || getProp(contactProps, 'lead_source') || 'Unknown';\n\n// Extract company properties from associated-company\nconst companyProps = data['associated-company']?.properties || {};\nconst companyName = getProp(companyProps, 'name') || 'Unknown';\nconst companySize = getProp(companyProps, 'numberofemployees') || 'Unknown';\nconst industry = getProp(companyProps, 'industry') || 'Unknown';\nconst companyDomain = getProp(companyProps, 'domain') || '';\nconst companyId = data['associated-company']?.['company-id'] || getProp(companyProps, 'hs_object_id');\n\n// Prepare form data\nconst formData = {\n  contactId: contactId,\n  contactName: `${firstName} ${lastName}`.trim() || 'Unknown',\n  contactEmail: email,\n  companyId: companyId,\n  companyName: companyName,\n  companySize: companySize,\n  companyDomain: companyDomain,\n  industry: industry,\n  sdrOwnerId: sdrOwnerId,\n  source: source\n};\n\n// Encode form data as base64 token\nconst token = Buffer.from(JSON.stringify(formData)).toString('base64');\n\n// Build form URL (UPDATE THIS WITH YOUR VERCEL URL)\nconst formUrl = `https://your-form.vercel.app?token=${token}`;\n\nreturn {\n  formData,\n  token,\n  formUrl\n};"
+      },
+      "id": "function-prepare-data",
+      "name": "Function - Prepare Form Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "blocks",
+              "value": "=[\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"New SAL Qualification Form\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Contact:*\\n{{ $json.formData.contactName }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Email:*\\n{{ $json.formData.contactEmail }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Company:*\\n{{ $json.formData.companyName }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Company Size:*\\n{{ $json.formData.companySize }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Industry:*\\n{{ $json.formData.industry }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Source:*\\n{{ $json.formData.source }}\"\n      }\n    ]\n  },\n  {\n    \"type\": \"actions\",\n    \"elements\": [\n      {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Complete SAL Form\"\n        },\n        \"url\": \"{{ $json.formUrl }}\",\n        \"style\": \"primary\"\n      }\n    ]\n  }\n]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-slack-webhook",
+      "name": "HTTP - Send Slack Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [690, 300],
+      "notes": "UPDATE: Add your Slack webhook URL in the 'url' field"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Form sent to AE\" } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Trigger SAL Form": {
+      "main": [
+        [
+          {
+            "node": "Function - Prepare Form Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function - Prepare Form Data": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Send Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Send Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
