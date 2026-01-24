@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 
-// Configuration - UPDATE THESE WITH YOUR n8n WEBHOOK URLs
+// Configuration
 const CONFIG = {
-  N8N_WEBHOOK_URL: 'https://your-n8n-instance.com/webhook/sal-form-submit',
-  N8N_CHECK_SUBMISSION_URL: 'https://your-n8n-instance.com/webhook/check-sal-submission'
+  N8N_WEBHOOK_URL: 'https://n8n-service-v39p.onrender.com/webhook/sal-form-submit',
+  N8N_CHECK_SUBMISSION_URL: 'https://n8n-service-v39p.onrender.com/webhook/check-sal-submission'
 }
 
 function App() {
