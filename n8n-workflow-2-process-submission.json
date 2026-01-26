@@ -141,6 +141,28 @@
     },
     {
       "parameters": {
+        "sendTo": "={{ $json.body.sdrEmail }}",
+        "subject": "=Meeting Not Held - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #f39c12;\">Meeting Not Held</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following meeting was marked as <strong>not held</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Reason:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.noShowReason || 'Not specified' }}</td>\n    </tr>\n  </table>\n  <p>Please follow up to reschedule the meeting.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "options": {
+          "bccList": "idan.ron@reindeerlabs.ai"
+        }
+      },
+      "id": "gmail-email-sdr-no-meeting",
+      "name": "Gmail - Email SDR - Meeting Not Held",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1130, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
         "bodyParameters": {
@@ -162,6 +184,28 @@
       "typeVersion": 4.1,
       "position": [910, 400],
       "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.sdrEmail }}",
+        "subject": "=Meeting Rescheduled - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #3498db;\">Meeting Rescheduled</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following meeting has been <strong>rescheduled</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>New Date:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.newMeetingDate || 'To be scheduled' }}</td>\n    </tr>\n  </table>\n  <p>Please coordinate the new meeting time.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "options": {
+          "bccList": "idan.ron@reindeerlabs.ai"
+        }
+      },
+      "id": "gmail-email-sdr-rescheduled",
+      "name": "Gmail - Email SDR - Rescheduled",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1130, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
     },
     {
       "parameters": {
@@ -346,6 +390,28 @@
     },
     {
       "parameters": {
+        "sendTo": "={{ $json.body.sdrEmail }}",
+        "subject": "=SAL Accepted - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #27ae60;\">SAL Accepted</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>Great news! The following lead has been <strong>accepted</strong> as a Sales Accepted Lead:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n  </table>\n  <h3 style=\"color: #333; margin-top: 20px;\">Qualification Summary</h3>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Identified Need:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.identifiedNeed }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Decision Maker:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.decisionMaker }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Next Step Commitment:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.nextStep }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.comments || 'None' }}</td>\n    </tr>\n  </table>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "options": {
+          "bccList": "idan.ron@reindeerlabs.ai"
+        }
+      },
+      "id": "gmail-email-sdr-accepted",
+      "name": "Gmail - Email SDR - Accepted",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1570, 600],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
         "bodyParameters": {
@@ -367,6 +433,28 @@
       "typeVersion": 4.1,
       "position": [1130, 800],
       "notes": "UPDATE: Add SDR Slack webhook URL"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.sdrEmail }}",
+        "subject": "=Lead Rejected - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e67e22;\">Lead Rejected</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following lead has been <strong>rejected</strong> and returned to you:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Rejection Reason:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.rejectReason || 'Not specified' }}</td>\n    </tr>\n  </table>\n  <p>Please review and consider re-qualifying this lead.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "options": {
+          "bccList": "idan.ron@reindeerlabs.ai"
+        }
+      },
+      "id": "gmail-email-sdr-rejected",
+      "name": "Gmail - Email SDR - Rejected",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1350, 800],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
     },
     {
       "parameters": {
@@ -394,6 +482,28 @@
     },
     {
       "parameters": {
+        "sendTo": "={{ $json.body.sdrEmail }}",
+        "subject": "=Lead Disqualified - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e74c3c;\">Lead Disqualified</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following lead has been <strong>disqualified</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.comments || 'None' }}</td>\n    </tr>\n  </table>\n  <p>This lead has been marked as disqualified in HubSpot.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "options": {
+          "bccList": "idan.ron@reindeerlabs.ai"
+        }
+      },
+      "id": "gmail-email-sdr-disqualified",
+      "name": "Gmail - Email SDR - Disqualified",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1350, 1000],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
         "resource": "contact",
         "operation": "upsert",
         "contactId": "={{ $json.body.contactId }}",
@@ -405,7 +515,7 @@
       "name": "Update Contact - Disqualified Lifecycle",
       "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
-      "position": [1350, 1000],
+      "position": [1570, 1000],
       "credentials": {
         "hubspotApi": {
           "id": "1",
@@ -422,7 +532,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1570, 700]
+      "position": [1790, 700]
     }
   ],
   "connections": {
@@ -497,6 +607,17 @@
       "main": [
         [
           {
+            "node": "Gmail - Email SDR - Meeting Not Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Email SDR - Meeting Not Held": {
+      "main": [
+        [
+          {
             "node": "Respond to Webhook",
             "type": "main",
             "index": 0
@@ -505,6 +626,17 @@
       ]
     },
     "Notify SDR - Rescheduled": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Email SDR - Rescheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Email SDR - Rescheduled": {
       "main": [
         [
           {
@@ -566,6 +698,17 @@
       "main": [
         [
           {
+            "node": "Gmail - Email SDR - Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Email SDR - Accepted": {
+      "main": [
+        [
+          {
             "node": "Respond to Webhook",
             "type": "main",
             "index": 0
@@ -577,6 +720,17 @@
       "main": [
         [
           {
+            "node": "Gmail - Email SDR - Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Email SDR - Rejected": {
+      "main": [
+        [
+          {
             "node": "Respond to Webhook",
             "type": "main",
             "index": 0
@@ -585,6 +739,17 @@
       ]
     },
     "Notify SDR - Disqualified": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Email SDR - Disqualified",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Email SDR - Disqualified": {
       "main": [
         [
           {
