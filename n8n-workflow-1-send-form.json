@@ -1,5 +1,5 @@
 {
-  "name": "SAL Form - Send to AE",
+  "name": "SAL Form - Send to AE (v2)",
   "nodes": [
     {
       "parameters": {
@@ -12,15 +12,17 @@
       "name": "Webhook - Trigger SAL Form",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        256,
+        304
+      ],
       "webhookId": "sal-form-trigger"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.hubspot.com/crm/v3/objects/contacts/{{ $json.body.contactId }}",
+        "url": "=https://api.hubspot.com/crm/v3/objects/contacts/{{ $json.body[0].objectId }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "hubspotApi",
+        "nodeCredentialType": "hubspotAppToken",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -36,20 +38,22 @@
       "name": "HTTP - Get Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [470, 300],
+      "position": [
+        480,
+        304
+      ],
       "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=https://api.hubspot.com/crm/v3/objects/meetings/{{ $json.properties.last_meeting_record_id }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "hubspotApi",
+        "nodeCredentialType": "hubspotAppToken",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -65,20 +69,22 @@
       "name": "HTTP - Get Meeting",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [690, 300],
+      "position": [
+        704,
+        304
+      ],
       "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.hubspot.com/crm/v3/objects/companies/{{ $node['HTTP - Get Contact'].json.properties.associatedcompanyid }}",
+        "url": "=https://api.hubspot.com/crm/v3/objects/companies/{{ $node[\"HTTP - Get Contact\"].json.properties.associatedcompanyid }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "hubspotApi",
+        "nodeCredentialType": "hubspotAppToken",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -94,108 +100,114 @@
       "name": "HTTP - Get Company",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [910, 300],
+      "position": [
+        912,
+        304
+      ],
       "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Get data from previous nodes\nconst contact = $node['HTTP - Get Contact'].json;\nconst meeting = $node['HTTP - Get Meeting'].json;\nconst company = $node['HTTP - Get Company'].json;\n\n// Parse attendee owner IDs from meeting (semicolon-separated)\nconst attendeeOwnerIds = meeting.properties.hs_attendee_owner_ids\n  ? meeting.properties.hs_attendee_owner_ids.split(';').map(id => id.trim())\n  : [];\n\n// Get SDR owner ID from company\nconst sdrOwnerId = company.properties.hubspot_owner_id;\n\n// Return data for fetching owners\nreturn {\n  json: {\n    contactId: contact.id,\n    contactFirstName: contact.properties.firstname || '',\n    contactLastName: contact.properties.lastname || '',\n    contactEmail: contact.properties.email || '',\n    companyId: company.id,\n    companyName: company.properties.name || 'Unknown',\n    companyDomain: company.properties.domain || '',\n    source: company.properties.lead_source || '',\n    meetingId: meeting.id,\n    meetingTitle: meeting.properties.hs_meeting_title || '',\n    meetingStartTime: meeting.properties.hs_meeting_start_time || '',\n    attendeeOwnerIds: attendeeOwnerIds,\n    sdrOwnerId: sdrOwnerId\n  }\n};"
+        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Meeting\"].json.properties.hubspot_owner_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {}
       },
-      "id": "code-prepare-owner-fetch",
-      "name": "Code - Prepare Owner Fetch",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1130, 300]
+      "id": "http-get-ae-owner",
+      "name": "HTTP - Get AE Owner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1136,
+        304
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $json.sdrOwnerId }}",
+        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Company\"].json.properties.hubspot_owner_id }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "hubspotApi",
+        "nodeCredentialType": "hubspotAppToken",
         "options": {}
       },
       "id": "http-get-sdr-owner",
       "name": "HTTP - Get SDR Owner",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1350, 200],
+      "position": [
+        1360,
+        304
+      ],
       "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.hubspot.com/crm/v3/owners/?limit=100",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "hubspotApi",
-        "options": {}
+        "jsCode": "const contact = $node[\"HTTP - Get Contact\"].json;\nconst meeting = $node[\"HTTP - Get Meeting\"].json;\nconst company = $node[\"HTTP - Get Company\"].json;\nconst aeOwner = $node[\"HTTP - Get AE Owner\"].json;\nconst sdrOwner = $input.first().json;\n\nlet meetingDate = \"\";\nif (meeting.properties.hs_meeting_start_time) {\n  try {\n    const date = new Date(meeting.properties.hs_meeting_start_time);\n    meetingDate = date.toLocaleDateString(\"en-US\", {\n      weekday: \"long\",\n      year: \"numeric\",\n      month: \"long\",\n      day: \"numeric\",\n      hour: \"2-digit\",\n      minute: \"2-digit\"\n    });\n  } catch (e) {\n    meetingDate = meeting.properties.hs_meeting_start_time;\n  }\n}\n\nconst contactName = `${contact.properties.firstname || \"\"} ${contact.properties.lastname || \"\"}`.trim() || \"Unknown\";\n\nconst aeName = aeOwner ? `${aeOwner.firstName || \"\"} ${aeOwner.lastName || \"\"}`.trim() : \"Unknown AE\";\nconst aeEmail = aeOwner ? aeOwner.email : \"\";\n\nconst sdrName = sdrOwner ? `${sdrOwner.firstName || \"\"} ${sdrOwner.lastName || \"\"}`.trim() : \"Unknown SDR\";\nconst sdrEmail = sdrOwner ? sdrOwner.email : \"\";\n\nconst formData = {\n  contactId: contact.id,\n  contactName: contactName,\n  contactEmail: contact.properties.email || \"\",\n  companyId: company.id,\n  companyName: company.properties.name || \"Unknown\",\n  companyDomain: company.properties.domain || \"\",\n  source: company.properties.lead_source || \"\",\n  meetingId: meeting.id,\n  meetingTitle: meeting.properties.hs_meeting_title || \"\",\n  meetingDate: meetingDate,\n  aeName: aeName,\n  aeEmail: aeEmail,\n  aeOwnerId: aeOwner ? aeOwner.id : \"\",\n  sdrName: sdrName,\n  sdrEmail: sdrEmail,\n  sdrOwnerId: sdrOwner ? sdrOwner.id : \"\"\n};\n\nconst token = Buffer.from(JSON.stringify(formData)).toString(\"base64\");\nconst formUrl = `https://sal-qualification-form.vercel.app?token=${token}`;\n\nreturn {\n  json: {\n    ...formData,\n    token: token,\n    formUrl: formUrl\n  }\n};"
       },
-      "id": "http-get-all-owners",
-      "name": "HTTP - Get All Owners",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1350, 400],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
-        }
-      },
-      "notes": "Fetch all owners to find meeting attendees by ID"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Get data from previous nodes\nconst prepData = $node['Code - Prepare Owner Fetch'].json;\nconst sdrOwner = $node['HTTP - Get SDR Owner'].json;\nconst allOwners = $node['HTTP - Get All Owners'].json.results || [];\n\n// Helper to check if email is from Reindeer AI\nconst isReindeerAI = (email) => {\n  if (!email) return false;\n  return email.endsWith('@reindeerlabs.ai') || email.endsWith('@rndrai.com');\n};\n\n// Find meeting attendee owners by ID\nconst attendeeOwners = prepData.attendeeOwnerIds\n  .map(id => allOwners.find(owner => owner.id === id))\n  .filter(owner => owner); // Remove any not found\n\n// Find AE - the Reindeer AI employee from meeting attendees\nconst ae = attendeeOwners.find(owner => isReindeerAI(owner.email));\n\n// SDR is the company owner\nconst sdr = sdrOwner;\n\n// Format meeting date\nlet meetingDate = '';\nif (prepData.meetingStartTime) {\n  try {\n    const date = new Date(prepData.meetingStartTime);\n    meetingDate = date.toLocaleDateString('en-US', {\n      weekday: 'long',\n      year: 'numeric',\n      month: 'long',\n      day: 'numeric',\n      hour: '2-digit',\n      minute: '2-digit'\n    });\n  } catch (e) {\n    meetingDate = prepData.meetingStartTime;\n  }\n}\n\n// Prepare form data\nconst contactName = `${prepData.contactFirstName} ${prepData.contactLastName}`.trim() || 'Unknown';\n\nconst formData = {\n  contactId: prepData.contactId,\n  contactName: contactName,\n  contactEmail: prepData.contactEmail,\n  companyId: prepData.companyId,\n  companyName: prepData.companyName,\n  companyDomain: prepData.companyDomain,\n  source: prepData.source,\n  meetingId: prepData.meetingId,\n  meetingTitle: prepData.meetingTitle,\n  meetingDate: meetingDate,\n  aeName: ae ? `${ae.firstName || ''} ${ae.lastName || ''}`.trim() : 'Unknown AE',\n  aeEmail: ae ? ae.email : '',\n  aeOwnerId: ae ? ae.id : '',\n  sdrName: sdr ? `${sdr.firstName || ''} ${sdr.lastName || ''}`.trim() : 'Unknown SDR',\n  sdrEmail: sdr ? sdr.email : '',\n  sdrOwnerId: sdr ? sdr.id : ''\n};\n\n// Encode form data as base64 token\nconst token = Buffer.from(JSON.stringify(formData)).toString('base64');\n\n// Build form URL\nconst formUrl = `https://sal-qualification-form.vercel.app?token=${token}`;\n\nreturn {\n  json: {\n    ...formData,\n    token: token,\n    formUrl: formUrl,\n    attendeeCount: attendeeOwners.length,\n    aeFound: !!ae\n  }\n};"
-      },
-      "id": "code-identify-ae-sdr",
-      "name": "Code - Identify AE & SDR",
+      "id": "code-prepare-form-data",
+      "name": "Code - Prepare Form Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1570, 300]
+      "position": [
+        1584,
+        304
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.aeEmail }}",
+        "sendTo": "={{ $json.sdrEmail }}",
         "subject": "=SAL Qualification Form - {{ $json.contactName }} at {{ $json.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #333;\">SAL Qualification Form</h2>\n  <p>Hi {{ $json.aeName }},</p>\n  <p>Please complete the SAL qualification form for your recent meeting:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Meeting:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.meetingTitle }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Date:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.meetingDate }}</td>\n    </tr>\n  </table>\n  <p style=\"text-align: center; margin: 30px 0;\">\n    <a href=\"{{ $json.formUrl }}\" style=\"background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-size: 16px;\">Complete SAL Form</a>\n  </p>\n  <p style=\"color: #666; font-size: 12px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <h2 style=\"color: #333; margin-bottom: 20px;\">SAL Qualification Form</h2>\n  <p style=\"color: #555; font-size: 16px;\">Hi {{ $json.aeName }},</p>\n  <p style=\"color: #555; font-size: 16px;\">Please complete the SAL qualification form for your recent meeting:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9; border-radius: 8px;\">\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Meeting:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.meetingTitle }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px;\"><strong>Date:</strong></td>\n      <td style=\"padding: 12px 16px;\">{{ $json.meetingDate }}</td>\n    </tr>\n  </table>\n  <p style=\"text-align: center; margin: 30px 0;\">\n    <a href=\"{{ $json.formUrl }}\" style=\"background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;\">Complete SAL Form</a>\n  </p>\n  <p style=\"color: #999; font-size: 12px; margin-top: 30px; text-align: center;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
-          "bccList": "idan.ron@reindeerlabs.ai"
+          "appendAttribution": false,
+          "bccList": "idan.ron@reindeerlabs.ai, galia.n@reindeer.ai"
         }
       },
       "id": "gmail-send-to-ae",
       "name": "Gmail - Send to AE",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1790, 300],
+      "position": [
+        1792,
+        304
+      ],
+      "webhookId": "0a50ebdf-d916-4e1c-835d-f86ac4949987",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
-      },
-      "notes": "UPDATE: Configure Gmail OAuth2 credentials in n8n"
+      }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"success\": true, \"message\": \"Form sent to AE\", \"aeEmail\": $json.aeEmail, \"aeName\": $json.aeName } }}"
+        "responseBody": "={{ JSON.stringify({ success: true, message: \"Form sent to AE\", aeEmail: $json.aeEmail, aeName: $json.aeName }) }}",
+        "options": {}
       },
       "id": "respond-webhook",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2010, 300]
+      "position": [
+        2016,
+        304
+      ]
     }
   ],
   "connections": {
@@ -236,23 +248,18 @@
       "main": [
         [
           {
-            "node": "Code - Prepare Owner Fetch",
+            "node": "HTTP - Get AE Owner",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code - Prepare Owner Fetch": {
+    "HTTP - Get AE Owner": {
       "main": [
         [
           {
             "node": "HTTP - Get SDR Owner",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "HTTP - Get All Owners",
             "type": "main",
             "index": 0
           }
@@ -263,25 +270,14 @@
       "main": [
         [
           {
-            "node": "Code - Identify AE & SDR",
+            "node": "Code - Prepare Form Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP - Get All Owners": {
-      "main": [
-        [
-          {
-            "node": "Code - Identify AE & SDR",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code - Identify AE & SDR": {
+    "Code - Prepare Form Data": {
       "main": [
         [
           {
@@ -305,6 +301,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }

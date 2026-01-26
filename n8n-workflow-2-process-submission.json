@@ -12,186 +12,172 @@
       "name": "Webhook - Form Submission",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        256,
+        400
+      ],
       "webhookId": "sal-form-submit"
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.body.formResponses.meetingHeld }}",
-              "operation": "equals",
-              "value2": "No"
-            }
-          ]
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/contacts/{{ $json.body.contactId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"sal_meeting_held\": \"{{ $json.body.formResponses.meetingHeld }}\",\n    \"sal_form_submitted_date\": \"{{ $json.body.formResponses.submittedAt.split('T')[0] }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "update-contact-basic",
+      "name": "Update Contact - Basic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-no",
+              "leftValue": "={{ $('Webhook - Form Submission').item.json.body.formResponses.meetingHeld }}",
+              "rightValue": "No",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "id": "if-meeting-not-held",
       "name": "IF - Meeting Not Held",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [470, 300]
+      "typeVersion": 2,
+      "position": [
+        704,
+        304
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.body.formResponses.meetingHeld }}",
-              "operation": "equals",
-              "value2": "Rescheduled"
+              "id": "condition-rescheduled",
+              "leftValue": "={{ $('Webhook - Form Submission').item.json.body.formResponses.meetingHeld }}",
+              "rightValue": "Rescheduled",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "id": "if-meeting-rescheduled",
       "name": "IF - Meeting Rescheduled",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [470, 500]
-    },
-    {
-      "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "contactId": "={{ $json.body.contactId }}",
-        "updateFields": {
-          "customProperties": {
-            "property": [
-              {
-                "name": "sal_meeting_held",
-                "value": "No"
-              },
-              {
-                "name": "sal_form_submitted_date",
-                "value": "={{ new Date().toISOString() }}"
-              }
-            ]
-          }
-        }
-      },
-      "id": "update-contact-no-meeting",
-      "name": "Update Contact - Meeting Not Held",
-      "type": "n8n-nodes-base.hubspot",
       "typeVersion": 2,
-      "position": [690, 200],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
-        }
-      }
+      "position": [
+        704,
+        512
+      ]
     },
     {
       "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "contactId": "={{ $json.body.contactId }}",
-        "updateFields": {
-          "customProperties": {
-            "property": [
-              {
-                "name": "sal_meeting_held",
-                "value": "Rescheduled"
-              },
-              {
-                "name": "sal_form_submitted_date",
-                "value": "={{ new Date().toISOString() }}"
-              }
-            ]
-          }
-        }
-      },
-      "id": "update-contact-rescheduled",
-      "name": "Update Contact - Rescheduled",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2,
-      "position": [690, 400],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
-        }
-      }
-    },
-    {
-      "parameters": {
+        "method": "POST",
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "⚠️ Meeting did not occur"
-            },
-            {
-              "name": "blocks",
-              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Meeting Not Held*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nAE: {{ $json.body.aeName }}\\n\\nPlease follow up to reschedule.\"\n    }\n  }\n]"
-            }
-          ]
-        }
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Meeting did not occur\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Meeting Not Held*\\n\\nContact: {{ $('Webhook - Form Submission').item.json.body.contactName }}\\nEmail: {{ $('Webhook - Form Submission').item.json.body.contactEmail }}\\nCompany: {{ $('Webhook - Form Submission').item.json.body.companyName }}\\nReason: {{ $('Webhook - Form Submission').item.json.body.formResponses.noShowReason || 'Not specified' }}\\n\\nPlease follow up to reschedule.\"\n      }\n    }\n  ]\n}",
+        "options": {}
       },
       "id": "notify-sdr-no-meeting",
       "name": "Notify SDR - Meeting Not Held",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [910, 200],
-      "notes": "UPDATE: Add SDR Slack webhook URL"
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        208
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.body.sdrEmail }}",
-        "subject": "=Meeting Not Held - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #f39c12;\">Meeting Not Held</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following meeting was marked as <strong>not held</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Reason:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.noShowReason || 'Not specified' }}</td>\n    </tr>\n  </table>\n  <p>Please follow up to reschedule the meeting.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $('Webhook - Form Submission').item.json.body.sdrEmail }}",
+        "subject": "=Meeting Not Held - {{ $('Webhook - Form Submission').item.json.body.contactName }} at {{ $('Webhook - Form Submission').item.json.body.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #f39c12;\">Meeting Not Held</h2>\n  <p>Hi {{ $('Webhook - Form Submission').item.json.body.sdrName }},</p>\n  <p>The following meeting was marked as <strong>not held</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactEmail }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.companyName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.aeName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Reason:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.noShowReason || 'Not specified' }}</td></tr>\n  </table>\n  <p>Please follow up to reschedule the meeting.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
+          "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai"
         }
       },
       "id": "gmail-email-sdr-no-meeting",
-      "name": "Gmail - Email SDR - Meeting Not Held",
+      "name": "Gmail - Email SDR - No Meeting",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1130, 200],
+      "position": [
+        1152,
+        208
+      ],
+      "webhookId": "ad3901b7-b890-4eb7-9a8c-6aee256f171f",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
       }
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "📅 Meeting Rescheduled"
-            },
-            {
-              "name": "blocks",
-              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Meeting Rescheduled*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nAE: {{ $json.body.aeName }}\\n\\nPlease coordinate a new meeting time.\"\n    }\n  }\n]"
-            }
-          ]
-        }
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Meeting Rescheduled\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Meeting Rescheduled*\\n\\nContact: {{ $('Webhook - Form Submission').item.json.body.contactName }}\\nEmail: {{ $('Webhook - Form Submission').item.json.body.contactEmail }}\\nCompany: {{ $('Webhook - Form Submission').item.json.body.companyName }}\\nNew Date: {{ $('Webhook - Form Submission').item.json.body.formResponses.rescheduleDate || 'TBD' }}\\nNotes: {{ $('Webhook - Form Submission').item.json.body.formResponses.rescheduleNotes || 'None' }}\\n\\nPlease coordinate the new meeting time.\"\n      }\n    }\n  ]\n}",
+        "options": {}
       },
       "id": "notify-sdr-rescheduled",
       "name": "Notify SDR - Rescheduled",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [910, 400],
-      "notes": "UPDATE: Add SDR Slack webhook URL"
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        512
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.body.sdrEmail }}",
-        "subject": "=Meeting Rescheduled - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #3498db;\">Meeting Rescheduled</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following meeting has been <strong>rescheduled</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>New Date:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.newMeetingDate || 'To be scheduled' }}</td>\n    </tr>\n  </table>\n  <p>Please coordinate the new meeting time.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $('Webhook - Form Submission').item.json.body.sdrEmail }}",
+        "subject": "=Meeting Rescheduled - {{ $('Webhook - Form Submission').item.json.body.contactName }} at {{ $('Webhook - Form Submission').item.json.body.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #3498db;\">Meeting Rescheduled</h2>\n  <p>Hi {{ $('Webhook - Form Submission').item.json.body.sdrName }},</p>\n  <p>The following meeting has been <strong>rescheduled</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactEmail }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.companyName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.aeName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>New Date:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.rescheduleDate || 'To be scheduled' }}</td></tr>\n  </table>\n  <p>Please coordinate the new meeting time.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
+          "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai"
         }
       },
@@ -199,202 +185,178 @@
       "name": "Gmail - Email SDR - Rescheduled",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1130, 400],
+      "position": [
+        1152,
+        512
+      ],
+      "webhookId": "6591fa10-dfa0-4d8d-ab93-1af402bfb5bc",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
       }
     },
     {
       "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "contactId": "={{ $json.body.contactId }}",
-        "updateFields": {
-          "customProperties": {
-            "property": [
-              {
-                "name": "sal_meeting_held",
-                "value": "={{ $json.body.formResponses.meetingHeld }}"
-              },
-              {
-                "name": "sal_identified_need",
-                "value": "={{ $json.body.formResponses.identifiedNeed === 'Yes' }}"
-              },
-              {
-                "name": "sal_identified_decision_maker",
-                "value": "={{ $json.body.formResponses.decisionMaker === 'Yes' }}"
-              },
-              {
-                "name": "sal_next_step_commitment",
-                "value": "={{ $json.body.formResponses.nextStep === 'Yes' }}"
-              },
-              {
-                "name": "sal_decision",
-                "value": "={{ $json.body.formResponses.salDecision }}"
-              },
-              {
-                "name": "sal_additional_attendees",
-                "value": "={{ $json.body.formResponses.additionalAttendees }}"
-              },
-              {
-                "name": "sal_qualification_notes",
-                "value": "={{ $json.body.formResponses.comments || '' }}"
-              },
-              {
-                "name": "sal_form_submitted_date",
-                "value": "={{ new Date().toISOString() }}"
-              }
-            ]
-          }
-        }
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/contacts/{{ $('Webhook - Form Submission').item.json.body.contactId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"sal_identified_need\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.identifiedNeed === 'Yes' ? 'true' : 'false' }}\",\n    \"sal_identified_decision_maker\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.decisionMaker === 'Yes' ? 'true' : 'false' }}\",\n    \"sal_next_step_commitment\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.nextStep === 'Yes' ? 'true' : 'false' }}\",\n    \"sal_decision\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.salDecision }}\",\n    \"sal_additional_attendees\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.additionalAttendees || '' }}\",\n    \"sal_qualification_notes\": \"{{ $('Webhook - Form Submission').item.json.body.formResponses.comments || '' }}\"\n  }\n}",
+        "options": {}
       },
       "id": "update-contact-full",
       "name": "Update Contact - Full Qualification",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2,
-      "position": [690, 700],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        704
+      ],
       "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
+        "rules": {
+          "values": [
             {
-              "value1": "={{ $json.body.formResponses.salDecision }}",
-              "operation": "equals",
-              "value2": "Accept"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook - Form Submission').item.json.body.formResponses.salDecision }}",
+                    "rightValue": "Accept",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Accept"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook - Form Submission').item.json.body.formResponses.salDecision }}",
+                    "rightValue": "Reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reject"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook - Form Submission').item.json.body.formResponses.salDecision }}",
+                    "rightValue": "Disqualify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Disqualify"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "switch-sal-decision",
       "name": "Switch - SAL Decision",
       "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [910, 700],
+      "typeVersion": 3,
+      "position": [
+        1152,
+        704
+      ]
+    },
+    {
       "parameters": {
-        "rules": {
-          "rules": [
-            {
-              "conditions": {
-                "string": [
-                  {
-                    "value1": "={{ $json.body.formResponses.salDecision }}",
-                    "operation": "equals",
-                    "value2": "Accept"
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "accept"
-            },
-            {
-              "conditions": {
-                "string": [
-                  {
-                    "value1": "={{ $json.body.formResponses.salDecision }}",
-                    "operation": "equals",
-                    "value2": "Reject"
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "reject"
-            },
-            {
-              "conditions": {
-                "string": [
-                  {
-                    "value1": "={{ $json.body.formResponses.salDecision }}",
-                    "operation": "equals",
-                    "value2": "Disqualify"
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "disqualify"
-            }
-          ]
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/companies/{{ $('Webhook - Form Submission').item.json.body.companyId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"sal_qualified\": \"true\",\n    \"sal_last_qualification_date\": \"{{ new Date().toISOString().split('T')[0] }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "update-company-accepted",
+      "name": "Update Company - SAL Accepted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1376,
+        608
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
         }
       }
     },
     {
       "parameters": {
-        "resource": "company",
-        "operation": "upsert",
-        "companyId": "={{ $json.body.companyId }}",
-        "updateFields": {
-          "customProperties": {
-            "property": [
-              {
-                "name": "sal_qualified",
-                "value": "true"
-              },
-              {
-                "name": "sal_last_qualification_date",
-                "value": "={{ new Date().toISOString() }}"
-              }
-            ]
-          }
-        }
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Lead Accepted as SAL\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Lead Accepted as SAL*\\n\\nContact: {{ $('Webhook - Form Submission').item.json.body.contactName }}\\nEmail: {{ $('Webhook - Form Submission').item.json.body.contactEmail }}\\nCompany: {{ $('Webhook - Form Submission').item.json.body.companyName }}\\nIndustry: {{ $('Webhook - Form Submission').item.json.body.industry }}\\n\\n*Qualification Details:*\\nIdentified Need: {{ $('Webhook - Form Submission').item.json.body.formResponses.identifiedNeed }}\\nDecision Maker: {{ $('Webhook - Form Submission').item.json.body.formResponses.decisionMaker }}\\nNext Step Agreed: {{ $('Webhook - Form Submission').item.json.body.formResponses.nextStep }}\\n\\nComments: {{ $('Webhook - Form Submission').item.json.body.formResponses.comments || 'None' }}\"\n      }\n    }\n  ]\n}",
+        "options": {}
       },
-      "id": "update-company-accept",
-      "name": "Update Company - Accepted",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2,
-      "position": [1130, 600],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
-        }
-      }
+      "id": "notify-accept",
+      "name": "Notify - Accepted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        608
+      ]
     },
     {
       "parameters": {
-        "resource": "deal",
-        "operation": "upsert",
-        "dealId": "={{ $json.body.dealId }}",
-        "updateFields": {
-          "stage": "sal_qualified",
-          "customProperties": {
-            "property": [
-              {
-                "name": "sal_qualification_notes",
-                "value": "={{ $json.body.formResponses.comments }}"
-              }
-            ]
-          }
-        }
-      },
-      "id": "update-deal-accept",
-      "name": "Update Deal - Move to SAL Stage",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2,
-      "position": [1350, 600],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
-        }
-      },
-      "notes": "UPDATE: Set correct pipeline stage ID"
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $json.body.sdrEmail }}",
-        "subject": "=SAL Accepted - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #27ae60;\">SAL Accepted</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>Great news! The following lead has been <strong>accepted</strong> as a Sales Accepted Lead:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n  </table>\n  <h3 style=\"color: #333; margin-top: 20px;\">Qualification Summary</h3>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Identified Need:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.identifiedNeed }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Decision Maker:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.decisionMaker }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Next Step Commitment:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.nextStep }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.comments || 'None' }}</td>\n    </tr>\n  </table>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $('Webhook - Form Submission').item.json.body.sdrEmail }}",
+        "subject": "=SAL Accepted - {{ $('Webhook - Form Submission').item.json.body.contactName }} at {{ $('Webhook - Form Submission').item.json.body.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #27ae60;\">SAL Accepted</h2>\n  <p>Hi {{ $('Webhook - Form Submission').item.json.body.sdrName }},</p>\n  <p>Great news! The following lead has been <strong>accepted</strong> as a Sales Accepted Lead:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactEmail }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.companyName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.aeName }}</td></tr>\n  </table>\n  <h3 style=\"color: #333; margin-top: 20px;\">Qualification Summary</h3>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Identified Need:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.identifiedNeed }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Decision Maker:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.decisionMaker }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Next Step Commitment:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.nextStep }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.comments || 'None' }}</td></tr>\n  </table>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
+          "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai"
         }
       },
@@ -402,45 +364,43 @@
       "name": "Gmail - Email SDR - Accepted",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1570, 600],
+      "position": [
+        1824,
+        608
+      ],
+      "webhookId": "62659a1d-39c9-4e44-b79d-f08ac9d8822a",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
       }
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "🔄 Lead Rejected - Returned to SDR"
-            },
-            {
-              "name": "blocks",
-              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Lead Status: Rejected*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nReason: {{ $json.body.formResponses.rejectReason }}\\n\\nThis lead has been returned to you.\"\n    }\n  }\n]"
-            }
-          ]
-        }
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Lead Rejected - Returned to SDR\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Lead Rejected - Returned to SDR*\\n\\nContact: {{ $('Webhook - Form Submission').item.json.body.contactName }}\\nEmail: {{ $('Webhook - Form Submission').item.json.body.contactEmail }}\\nCompany: {{ $('Webhook - Form Submission').item.json.body.companyName }}\\n\\nReason: {{ $('Webhook - Form Submission').item.json.body.formResponses.rejectReason || 'Not specified' }}\\n\\nThis lead has been returned for further nurturing.\"\n      }\n    }\n  ]\n}",
+        "options": {}
       },
       "id": "notify-sdr-reject",
       "name": "Notify SDR - Rejected",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1130, 800],
-      "notes": "UPDATE: Add SDR Slack webhook URL"
+      "typeVersion": 4.2,
+      "position": [
+        1376,
+        752
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.body.sdrEmail }}",
-        "subject": "=Lead Rejected - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e67e22;\">Lead Rejected</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following lead has been <strong>rejected</strong> and returned to you:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Rejection Reason:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.rejectReason || 'Not specified' }}</td>\n    </tr>\n  </table>\n  <p>Please review and consider re-qualifying this lead.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $('Webhook - Form Submission').item.json.body.sdrEmail }}",
+        "subject": "=Lead Rejected - {{ $('Webhook - Form Submission').item.json.body.contactName }} at {{ $('Webhook - Form Submission').item.json.body.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e67e22;\">Lead Rejected</h2>\n  <p>Hi {{ $('Webhook - Form Submission').item.json.body.sdrName }},</p>\n  <p>The following lead has been <strong>rejected</strong> and returned to you:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactEmail }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.companyName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.aeName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Rejection Reason:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.rejectReason || 'Not specified' }}</td></tr>\n  </table>\n  <p>Please review and consider re-qualifying this lead.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
+          "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai"
         }
       },
@@ -448,45 +408,43 @@
       "name": "Gmail - Email SDR - Rejected",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1350, 800],
+      "position": [
+        1600,
+        752
+      ],
+      "webhookId": "7d5e3158-1064-4593-86cc-0f0afa356253",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
       }
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "YOUR_SLACK_WEBHOOK_URL",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "❌ Lead Disqualified"
-            },
-            {
-              "name": "blocks",
-              "value": "=[\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Lead Status: Disqualified*\\n\\nContact: {{ $json.body.contactName }}\\nCompany: {{ $json.body.companyName }}\\nNotes: {{ $json.body.formResponses.comments }}\\n\\nThis lead has been disqualified.\"\n    }\n  }\n]"
-            }
-          ]
-        }
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Lead Disqualified\",\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Lead Disqualified*\\n\\nContact: {{ $('Webhook - Form Submission').item.json.body.contactName }}\\nEmail: {{ $('Webhook - Form Submission').item.json.body.contactEmail }}\\nCompany: {{ $('Webhook - Form Submission').item.json.body.companyName }}\\n\\nNotes: {{ $('Webhook - Form Submission').item.json.body.formResponses.comments || 'None' }}\\n\\nThis lead has been disqualified.\"\n      }\n    }\n  ]\n}",
+        "options": {}
       },
       "id": "notify-sdr-disqualify",
       "name": "Notify SDR - Disqualified",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1130, 1000],
-      "notes": "UPDATE: Add SDR Slack webhook URL"
+      "typeVersion": 4.2,
+      "position": [
+        1376,
+        912
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.body.sdrEmail }}",
-        "subject": "=Lead Disqualified - {{ $json.body.contactName }} at {{ $json.body.companyName }}",
-        "emailType": "html",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e74c3c;\">Lead Disqualified</h2>\n  <p>Hi {{ $json.body.sdrName }},</p>\n  <p>The following lead has been <strong>disqualified</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.contactEmail }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.aeName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td>\n      <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $json.body.formResponses.comments || 'None' }}</td>\n    </tr>\n  </table>\n  <p>This lead has been marked as disqualified in HubSpot.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $('Webhook - Form Submission').item.json.body.sdrEmail }}",
+        "subject": "=Lead Disqualified - {{ $('Webhook - Form Submission').item.json.body.contactName }} at {{ $('Webhook - Form Submission').item.json.body.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #e74c3c;\">Lead Disqualified</h2>\n  <p>Hi {{ $('Webhook - Form Submission').item.json.body.sdrName }},</p>\n  <p>The following lead has been <strong>disqualified</strong>:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Email:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.contactEmail }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.companyName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>AE:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.aeName }}</td></tr>\n    <tr><td style=\"padding: 8px; border-bottom: 1px solid #eee;\"><strong>Notes:</strong></td><td style=\"padding: 8px; border-bottom: 1px solid #eee;\">{{ $('Webhook - Form Submission').item.json.body.formResponses.comments || 'None' }}</td></tr>\n  </table>\n  <p>This lead has been marked as disqualified in HubSpot.</p>\n  <p style=\"color: #666; font-size: 12px; margin-top: 30px;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
+          "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai"
         }
       },
@@ -494,49 +452,47 @@
       "name": "Gmail - Email SDR - Disqualified",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [1350, 1000],
+      "position": [
+        1600,
+        912
+      ],
+      "webhookId": "f6e12559-936d-46fc-8fef-930a20e4c778",
       "credentials": {
         "gmailOAuth2": {
-          "id": "GMAIL_CREDENTIAL_ID",
-          "name": "Gmail OAuth2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "contactId": "={{ $json.body.contactId }}",
-        "updateFields": {
-          "lifecyclestage": "disqualified"
-        }
-      },
-      "id": "update-lifecycle-disqualify",
-      "name": "Update Contact - Disqualified Lifecycle",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2,
-      "position": [1570, 1000],
-      "credentials": {
-        "hubspotApi": {
-          "id": "1",
-          "name": "HubSpot API"
+          "id": "ieIscLrrOVlYcwBB",
+          "name": "Gmail account"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"success\": true, \"decision\": $json.body.formResponses.salDecision } }}"
+        "responseBody": "={{ { \"success\": true, \"decision\": $('Webhook - Form Submission').item.json.body.formResponses.salDecision, \"meetingHeld\": $('Webhook - Form Submission').item.json.body.formResponses.meetingHeld } }}",
+        "options": {}
       },
       "id": "respond-webhook-success",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1790, 700]
+      "typeVersion": 1.1,
+      "position": [
+        2048,
+        512
+      ]
     }
   ],
   "connections": {
     "Webhook - Form Submission": {
+      "main": [
+        [
+          {
+            "node": "Update Contact - Basic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Basic": {
       "main": [
         [
           {
@@ -556,7 +512,7 @@
       "main": [
         [
           {
-            "node": "Update Contact - Meeting Not Held",
+            "node": "Notify SDR - Meeting Not Held",
             "type": "main",
             "index": 0
           }
@@ -574,28 +530,6 @@
       "main": [
         [
           {
-            "node": "Update Contact - Rescheduled",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Contact - Meeting Not Held": {
-      "main": [
-        [
-          {
-            "node": "Notify SDR - Meeting Not Held",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Contact - Rescheduled": {
-      "main": [
-        [
-          {
             "node": "Notify SDR - Rescheduled",
             "type": "main",
             "index": 0
@@ -607,14 +541,14 @@
       "main": [
         [
           {
-            "node": "Gmail - Email SDR - Meeting Not Held",
+            "node": "Gmail - Email SDR - No Meeting",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gmail - Email SDR - Meeting Not Held": {
+    "Gmail - Email SDR - No Meeting": {
       "main": [
         [
           {
@@ -662,7 +596,7 @@
       "main": [
         [
           {
-            "node": "Update Company - Accepted",
+            "node": "Update Company - SAL Accepted",
             "type": "main",
             "index": 0
           }
@@ -683,18 +617,18 @@
         ]
       ]
     },
-    "Update Company - Accepted": {
+    "Update Company - SAL Accepted": {
       "main": [
         [
           {
-            "node": "Update Deal - Move to SAL Stage",
+            "node": "Notify - Accepted",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Deal - Move to SAL Stage": {
+    "Notify - Accepted": {
       "main": [
         [
           {
@@ -753,17 +687,6 @@
       "main": [
         [
           {
-            "node": "Update Contact - Disqualified Lifecycle",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Contact - Disqualified Lifecycle": {
-      "main": [
-        [
-          {
             "node": "Respond to Webhook",
             "type": "main",
             "index": 0
@@ -773,6 +696,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   }
 }
