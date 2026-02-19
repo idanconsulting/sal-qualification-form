@@ -31,3 +31,5 @@ dist-ssr
 # Local config
 .claude/
 .mcp.json
+.vercel
+.env*.local

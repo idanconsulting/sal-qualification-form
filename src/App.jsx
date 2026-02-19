@@ -44,11 +44,12 @@ function App() {
     }
 
     try {
-      const decoded = JSON.parse(atob(token))
+      // URLSearchParams converts + to spaces; restore them for valid base64
+      const decoded = JSON.parse(atob(token.replace(/ /g, '+')))
       setFormData(decoded)
 
-      // Check localStorage for previous submission
-      const submissionKey = `sal_form_${decoded.contactId}`
+      // Check localStorage for previous submission (keyed by meetingId to handle multiple contacts)
+      const submissionKey = `sal_form_${decoded.meetingId}`
       const previousSubmission = localStorage.getItem(submissionKey)
 
       if (previousSubmission) {
@@ -89,8 +90,8 @@ function App() {
       })
 
       if (response.ok) {
-        // Mark as submitted in localStorage
-        const submissionKey = `sal_form_${formData.contactId}`
+        // Mark as submitted in localStorage (keyed by meetingId)
+        const submissionKey = `sal_form_${formData.meetingId}`
         localStorage.setItem(submissionKey, new Date().toISOString())
         setSubmitted(true)
       } else {
@@ -157,8 +158,8 @@ function App() {
       })
 
       if (response.ok) {
-        // Mark as submitted in localStorage
-        const submissionKey = `sal_form_${formData.contactId}`
+        // Mark as submitted in localStorage (keyed by meetingId)
+        const submissionKey = `sal_form_${formData.meetingId}`
         localStorage.setItem(submissionKey, new Date().toISOString())
         setSubmitted(true)
       } else {
@@ -214,7 +215,7 @@ function App() {
           <div className="text-green-600 text-5xl mb-4">✓</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Already Submitted</h1>
           <p className="text-gray-600">This form has already been completed.</p>
-          <p className="text-sm text-gray-500 mt-4">Contact: {formData.contactName}</p>
+          <p className="text-sm text-gray-500 mt-4">Contacts: {formData.contacts?.map(c => c.contactName).join(', ') || 'N/A'}</p>
         </div>
       </div>
     )
@@ -270,8 +271,8 @@ function App() {
                   <p className="font-medium">{formData.companyName || 'N/A'}</p>
                 </div>
                 <div>
-                  <span className="text-gray-600">Contact:</span>
-                  <p className="font-medium">{formData.contactName || 'N/A'}</p>
+                  <span className="text-gray-600">Contacts:</span>
+                  <p className="font-medium">{formData.contacts?.map(c => c.contactName).join(', ') || 'N/A'}</p>
                 </div>
                 <div>
                   <span className="text-gray-600">Source:</span>
@@ -367,7 +368,7 @@ function App() {
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
                     2. Additional Attendees
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">Booked with: {formData.contactName}</p>
+                  <p className="text-xs text-gray-500 mb-2">Booked with: {formData.contacts?.map(c => c.contactName).join(', ') || 'N/A'}</p>
                   <textarea
                     value={formState.additionalAttendees}
                     onChange={(e) => handleChange('additionalAttendees', e.target.value)}

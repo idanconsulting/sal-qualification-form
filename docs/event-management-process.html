@@ -755,49 +755,15 @@
 <header class="header">
     <div class="header-badge">Reindeer AI &middot; CRM Operations</div>
     <h1>Conference & Event<br>Management Process</h1>
-    <p>A streamlined system to manage attendee outreach, live event tracking, and post-event follow-ups across your entire team.</p>
+    <p>How we manage attendee outreach, live event tracking, and post-event follow-ups.</p>
 </header>
-
-<!-- ===== 1. THE PROBLEM & SOLUTION ===== -->
-<section class="section">
-    <div class="container">
-        <span class="section-label">Why This Matters</span>
-        <h2>From Chaos to Clarity</h2>
-        <p>We attend 5-10 events per year with 20-50 meetings each. Here's what changes.</p>
-
-        <div class="problem-solution">
-            <div class="ps-card problem">
-                <h3><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#F43F5E" stroke-width="2"/><path d="M7 7l6 6M13 7l-6 6" stroke="#F43F5E" stroke-width="2" stroke-linecap="round"/></svg> Today</h3>
-                <ul>
-                    <li>Attendee lists scattered across spreadsheets</li>
-                    <li>Meeting updates buried in Slack with no structure</li>
-                    <li>No single view of who we met at an event</li>
-                    <li>Follow-ups are manual and inconsistent</li>
-                    <li>Leadership has no real-time visibility</li>
-                    <li>Can't measure event ROI accurately</li>
-                </ul>
-            </div>
-            <div class="ps-card solution">
-                <h3><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#10B981" stroke-width="2"/><path d="M6 10l3 3 5-6" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> New Process</h3>
-                <ul>
-                    <li>One Google Sheet per event with all data in one place</li>
-                    <li>Reps type naturally in Slack &mdash; AI structures the data</li>
-                    <li>Live dashboard shows meetings, companies, and outcomes</li>
-                    <li>Follow-ups auto-generated based on interest level</li>
-                    <li>Everything syncs to HubSpot automatically</li>
-                    <li>Clear event ROI reporting by lead source</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- ===== 2. ARCHITECTURE OVERVIEW ===== -->
 <section class="section" style="background: var(--white);">
     <div class="container">
         <span class="section-label">System Architecture</span>
-        <h2>How It All Connects</h2>
-        <p>Four tools, one seamless flow. Reps use Slack. Managers watch the Sheet. Everything lands in HubSpot.</p>
+        <h2>How It Connects</h2>
+        <p>Four tools working together: Slack for rep input, Google Sheets as the live workspace, automation + AI as the orchestration layer, and HubSpot as the CRM of record.</p>
 
         <div class="arch-diagram">
             <div class="arch-nodes">
@@ -813,8 +779,8 @@
                     <div class="node-icon">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="#D97706"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                     </div>
-                    <div class="node-label">n8n + AI</div>
-                    <div class="node-desc">Automation layer</div>
+                    <div class="node-label">Automation + AI</div>
+                    <div class="node-desc">Orchestration layer</div>
                 </div>
                 <div class="arch-arrow">&rarr;</div>
                 <div class="arch-node sheets">
@@ -841,7 +807,7 @@
             </div>
             <div class="callout-text">
                 <strong>Key principle: Company-centric tracking</strong>
-                Reindeer AI tracks companies. You might meet multiple people from the same company &mdash; the system rolls up all interactions to the company level, showing the best status and highest interest across all contacts.
+                We track at the company level. Multiple contacts from the same company are rolled up &mdash; the system shows the best status and highest interest across all contacts for that company.
             </div>
         </div>
     </div>
@@ -851,15 +817,15 @@
 <section class="section">
     <div class="container">
         <span class="section-label">Event Lifecycle</span>
-        <h2>Three Phases, One Flow</h2>
+        <h2>Three Phases</h2>
         <p>Every event follows the same process: prepare, track, follow up.</p>
 
         <div class="phase-timeline">
             <!-- Phase 1 -->
             <div class="phase-card" data-phase="1">
                 <div class="phase-timing">1-4 weeks before the event</div>
-                <h3>Pre-Event: Target & Reach Out</h3>
-                <p>Set up the event workspace, identify targets, and start outreach.</p>
+                <h3>Pre-Event: Setup & Outreach</h3>
+                <p>Set up the event workspace, identify targets, and begin outreach.</p>
                 <ul class="phase-steps">
                     <li><strong>HubSpot Manager</strong> creates the event Google Sheet from template and imports the full attendee list</li>
                     <li><strong>HubSpot Manager</strong> creates the <code>#event-[name]</code> Slack channel and configures automation workflows</li>
@@ -872,8 +838,8 @@
             <!-- Phase 2 -->
             <div class="phase-card" data-phase="2">
                 <div class="phase-timing">During the event</div>
-                <h3>Live Event: Track in Real Time</h3>
-                <p>Reps post naturally in Slack. AI captures everything. Leadership watches the dashboard.</p>
+                <h3>During Event: Live Tracking</h3>
+                <p>Reps post updates in Slack. AI parses and structures the data. Leadership monitors the dashboard.</p>
                 <ul class="phase-steps">
                     <li><strong>Sales Reps</strong> post free-form updates in the event Slack channel after every interaction</li>
                     <li><strong>AI</strong> parses each message &rarr; extracts company, contact, status, interest level, and notes</li>
@@ -886,8 +852,8 @@
             <!-- Phase 3 -->
             <div class="phase-card" data-phase="3">
                 <div class="phase-timing">Within 1 week after</div>
-                <h3>Post-Event: Follow Up & Measure</h3>
-                <p>Auto-generated follow-ups, reviewed by the team, then executed.</p>
+                <h3>Post-Event: Follow-Up & Reporting</h3>
+                <p>System generates follow-up recommendations. Team reviews and approves before execution.</p>
                 <ul class="phase-steps">
                     <li><strong>System</strong> runs final sync and generates a "Follow-Up Review" tab with proposed actions per company</li>
                     <li><strong>AEs & Reps</strong> review the follow-up list and approve or adjust actions</li>
@@ -904,8 +870,8 @@
 <section class="section" style="background: var(--white);">
     <div class="container">
         <span class="section-label">For Sales Reps</span>
-        <h2>Just Type in Slack</h2>
-        <p>No forms. No tabs to fill. Just send a message after every meeting or interaction, and the AI does the rest.</p>
+        <h2>How Reps Log Meetings</h2>
+        <p>After every meeting or interaction, post an update in the event Slack channel. The AI parses your message into structured data.</p>
 
         <div class="slack-example">
             <div class="slack-channel"># event-manifest-2026</div>
@@ -939,8 +905,8 @@
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="var(--emerald)"><circle cx="10" cy="10" r="9" fill="none" stroke="var(--emerald)" stroke-width="2"/><path d="M6 10l3 3 5-6" stroke="var(--emerald)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="callout-text">
-                <strong>Zero friction for reps</strong>
-                Type the way you naturally would. The AI figures out the company, contact, status, and interest level. It confirms in a thread reply so you can quickly correct anything before it hits the Sheet and HubSpot.
+                <strong>How it works</strong>
+                Write naturally &mdash; the AI extracts the company, contact, status, and interest level. It confirms in a thread reply so you can correct anything before it syncs to the Sheet and HubSpot. If your message is missing details (e.g., contact name or interest level), the AI captures what it can and asks for the rest in the thread.
             </div>
         </div>
     </div>
@@ -951,7 +917,7 @@
     <div class="container">
         <span class="section-label">Live Workspace</span>
         <h2>The Event Google Sheet</h2>
-        <p>One Sheet per event with three tabs. This is where the team works during the event and where leadership gets real-time visibility.</p>
+        <p>One Sheet per event with three tabs: attendee list, live meeting tracker, and summary dashboard.</p>
 
         <!-- Sheet preview: Attendee List -->
         <h3 style="margin-top: 32px; font-size: 16px;">Tab 1: Attendee List <span style="font-weight: 400; color: var(--slate-500); font-size: 14px;">&mdash; pre-event targeting</span></h3>
@@ -1016,7 +982,7 @@
     <div class="container">
         <span class="section-label">Data Hygiene</span>
         <h2>Who Gets Imported to HubSpot?</h2>
-        <p>Not everyone on the attendee list goes into HubSpot. We keep the CRM clean by only importing contacts we actually engage with.</p>
+        <p>Only contacts we actually engage with get imported to HubSpot. The full attendee list stays in Google Sheets.</p>
 
         <div class="import-tiers">
             <div class="import-tier full">
@@ -1045,45 +1011,82 @@
     </div>
 </section>
 
-<!-- ===== 7. FOLLOW-UP MATRIX ===== -->
+<!-- ===== 7. FOLLOW-UP PROCESS ===== -->
 <section class="section">
     <div class="container">
         <span class="section-label">Post-Event</span>
-        <h2>Automated Follow-Up Actions</h2>
-        <p>After the event, the system generates follow-up recommendations based on interest level. Your team reviews and approves before anything fires.</p>
+        <h2>Follow-Up Process</h2>
+        <p>How follow-ups are generated, reviewed, and executed after each event.</p>
 
-        <div class="followup-grid">
-            <div class="followup-card hot">
-                <h4><span class="badge hot">Hot</span> High Intent Leads</h4>
-                <p>Expressed clear interest, asked for a demo, or discussed specific use cases.</p>
-                <div class="followup-action">Action: HubSpot task + sequence enrollment (after review)</div>
-            </div>
-            <div class="followup-card warm">
-                <h4><span class="badge warm">Warm</span> Interested, Needs Nurturing</h4>
-                <p>Showed interest but no clear next step. Needs a personalized follow-up.</p>
-                <div class="followup-action">Action: HubSpot task with 3-day deadline</div>
-            </div>
-            <div class="followup-card cool">
-                <h4><span class="badge" style="background: var(--sky-light); color: #0284C7;">Cool</span> Polite but No Urgency</h4>
-                <p>Met briefly, no strong signal. Worth a light touch to stay on radar.</p>
-                <div class="followup-action">Action: HubSpot task with 1-week deadline</div>
-            </div>
-            <div class="followup-card noshow">
-                <h4><span class="badge" style="background: var(--slate-200); color: var(--slate-600);">No-Show</span> Scheduled but Didn't Meet</h4>
-                <p>Had a meeting booked but didn't show up. Worth a re-engagement attempt.</p>
-                <div class="followup-action">Action: Re-engagement task assigned to rep</div>
+        <h3 style="font-size: 16px; margin-top: 32px; margin-bottom: 16px;">Sequence Templates</h3>
+        <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 16px;">HubSpot Manager creates these once. AEs can clone and customize per event or per lead.</p>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>Template</th><th>For</th><th>Cadence</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Event - Hot Lead</strong></td><td>Completed meetings with high interest</td><td>3 emails over 1 week</td></tr>
+                <tr><td><strong>Event - Warm Lead</strong></td><td>Interested but no clear next step</td><td>3 emails over 2 weeks</td></tr>
+                <tr><td><strong>Event - Cool Lead</strong></td><td>Brief interaction, no urgency</td><td>2 emails over 3 weeks</td></tr>
+                <tr><td><strong>Event - No Show</strong></td><td>Scheduled but didn't show up</td><td>2 emails over 1 week</td></tr>
+            </tbody>
+        </table>
+
+        <h3 style="font-size: 16px; margin-top: 32px; margin-bottom: 16px;">The Review & Enrollment Flow</h3>
+
+        <div class="flow-diagram">
+            <div class="flow-row">
+                <div class="flow-box process">Generator runs</div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box store">Follow-Up Review tab</div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box action">AE reviews</div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box output">Enrollment or task</div>
             </div>
         </div>
+
+        <ol style="margin: 24px 0; padding-left: 20px; font-size: 14px; color: var(--slate-700);">
+            <li style="margin-bottom: 10px;"><strong>HubSpot Manager</strong> runs the post-event follow-up generator workflow</li>
+            <li style="margin-bottom: 10px;">System creates a <strong>"Follow-Up Review" tab</strong> in the event Google Sheet with one row per company: contact name, interest level, notes, recommended sequence, and an Action column</li>
+            <li style="margin-bottom: 10px;"><strong>AEs/Reps</strong> review each row and set the Action to either <strong>"Approve"</strong> or <strong>"I'll Handle"</strong></li>
+            <li style="margin-bottom: 10px;">System picks up actions every 15 minutes:
+                <ul style="margin-top: 6px; list-style: disc; padding-left: 20px;">
+                    <li><strong>Approve</strong> &rarr; contact is enrolled in the recommended sequence automatically</li>
+                    <li><strong>I'll Handle</strong> &rarr; a HubSpot task is created and assigned to the rep (they enroll manually or use a custom sequence)</li>
+                </ul>
+            </li>
+            <li style="margin-bottom: 10px;"><code>follow_up_status</code> is updated on both the Sheet and the Event Interaction record in HubSpot</li>
+        </ol>
 
         <div class="callout info">
             <div class="callout-icon">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="var(--primary)"><circle cx="10" cy="10" r="9" fill="none" stroke="var(--primary)" stroke-width="2"/><path d="M10 9v5M10 6.5v.01" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"/></svg>
             </div>
             <div class="callout-text">
-                <strong>Review before execution</strong>
-                No sequences fire automatically. The system generates a "Follow-Up Review" tab in the Google Sheet where AEs and reps review, adjust, and approve actions before they go out.
+                <strong>Nothing fires without review</strong>
+                No sequences are triggered automatically. The rep must explicitly set "Approve" or "I'll Handle" for each company before anything happens.
             </div>
         </div>
+
+        <h3 style="font-size: 16px; margin-top: 32px; margin-bottom: 16px;">Follow-Up Tracking</h3>
+        <p style="font-size: 14px; color: var(--slate-600); margin-bottom: 16px;">Status is tracked in two places for different timeframes:</p>
+
+        <div class="import-tiers">
+            <div class="import-tier full">
+                <div class="tier-label">Google Sheet</div>
+                <div class="tier-desc">Follow-Up Review tab &mdash; real-time status during the first 1-2 weeks</div>
+                <div class="tier-where">Working view</div>
+            </div>
+            <div class="import-tier responded">
+                <div class="tier-label">HubSpot</div>
+                <div class="tier-desc"><code>follow_up_status</code> on Event Interaction &mdash; long-term reporting across events</div>
+                <div class="tier-where">Permanent record</div>
+            </div>
+        </div>
+
+        <p style="font-size: 13px; color: var(--slate-500); margin-top: 8px;">Status values: Pending &rarr; Approved &rarr; Enrolled in Sequence / Claimed by Rep &rarr; Completed</p>
     </div>
 </section>
 
@@ -1092,7 +1095,7 @@
     <div class="container">
         <span class="section-label">Who Does What</span>
         <h2>Roles & Responsibilities</h2>
-        <p>Clear ownership at every stage so nothing falls through the cracks.</p>
+        <p>Clear ownership at every stage of the event lifecycle.</p>
 
         <div class="role-grid">
             <div class="role-card ops">
@@ -1239,12 +1242,43 @@
     </div>
 </section>
 
+<!-- ===== LIFECYCLE STAGES ===== -->
+<section class="section" style="background: var(--white);">
+    <div class="container">
+        <span class="section-label">Lifecycle Stages</span>
+        <h2>When Does a Contact Move to MQL or SQL?</h2>
+        <p>Lifecycle stage progression is tied to meeting status, not just intent.</p>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>Meeting Status</th><th>Lifecycle Stage</th><th>Rationale</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Meeting scheduled (before event)</td><td><span class="badge warm">MQL</span></td><td>Intent shown by booking, but no conversation yet</td></tr>
+                <tr><td>Meeting completed</td><td><span class="badge completed">SQL</span></td><td>Actual conversation occurred &mdash; qualified by sales</td></tr>
+                <tr><td>No-show</td><td><span class="badge warm">MQL</span></td><td>Meeting was booked but didn't happen &mdash; stays MQL</td></tr>
+                <tr><td>Booth visit / Walk-up</td><td><span class="badge completed">SQL</span></td><td>Direct interaction happened &mdash; treated as sales-qualified</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout info">
+            <div class="callout-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="var(--primary)"><circle cx="10" cy="10" r="9" fill="none" stroke="var(--primary)" stroke-width="2"/><path d="M10 9v5M10 6.5v.01" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div class="callout-text">
+                <strong>Key rule</strong>
+                A contact becomes an MQL when a meeting is <strong>scheduled</strong>. They only move to SQL when the meeting actually <strong>happens</strong>. If a contact is already at a later stage (e.g., Opportunity), the event interaction does not downgrade them.
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- ===== 9. DATA FLOW SUMMARY ===== -->
 <section class="section">
     <div class="container">
         <span class="section-label">Data Flow</span>
         <h2>How Data Moves Through the System</h2>
-        <p>Three automated workflows keep everything in sync.</p>
+        <p>Three automated workflows handle data movement between systems.</p>
 
         <h3 style="font-size: 16px; margin-top: 32px; margin-bottom: 12px;">Workflow 1: Slack &rarr; Google Sheet</h3>
         <div class="flow-diagram">
@@ -1292,7 +1326,7 @@
     <div class="container">
         <span class="section-label">Multi-Event Support</span>
         <h2>What Happens When a Contact Attends Multiple Events?</h2>
-        <p>Contacts and companies often appear at multiple conferences. The system preserves full history using a HubSpot custom object &mdash; nothing gets overwritten.</p>
+        <p>Contacts and companies often appear at multiple conferences. Each event interaction is stored as a separate HubSpot custom object record &mdash; no data is overwritten.</p>
 
         <div class="callout warning">
             <div class="callout-icon">
@@ -1372,6 +1406,9 @@
                 <tr><td><code>follow_up_action</code></td><td>Dropdown</td><td>Demo / Send Info / Intro to AE / Nurture / None</td></tr>
                 <tr><td><code>notes</code></td><td>Text</td><td>Wants demo, interested in last-mile visibility</td></tr>
                 <tr><td><code>rep_name</code></td><td>Text</td><td>Lisa R.</td></tr>
+                <tr><td><code>contact_name</code></td><td>Text</td><td>Sarah Chen (stored at creation for report readability)</td></tr>
+                <tr><td><code>company_name</code></td><td>Text</td><td>LogiCorp (stored at creation for report readability)</td></tr>
+                <tr><td><code>follow_up_status</code></td><td>Dropdown</td><td>Pending / Approved / Enrolled in Sequence / Claimed by Rep / Completed</td></tr>
             </tbody>
         </table>
 
@@ -1405,52 +1442,48 @@
 <section class="section">
     <div class="container">
         <span class="section-label">Reporting</span>
-        <h2>What Each Team Sees</h2>
+        <h2>HubSpot Reports</h2>
+        <p>One dashboard per event, cloned from a template. Reports 1-5 use the Event Interaction object (single-object reports). Report 6 uses standard deal reporting.</p>
 
-        <div class="metrics-row">
-            <div class="metric-card">
-                <div class="metric-value">42</div>
-                <div class="metric-label">Companies Engaged</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value">67</div>
-                <div class="metric-label">Total Meetings</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value">18</div>
-                <div class="metric-label">Hot Leads</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value">91%</div>
-                <div class="metric-label">Follow-up Rate</div>
-            </div>
-        </div>
+        <table class="data-table">
+            <thead>
+                <tr><th>#</th><th>Report</th><th>Object</th><th>Group By</th><th>Metric</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Meeting Activity by Rep</td><td>Event Interaction</td><td><code>rep_name</code> &times; <code>meeting_status</code></td><td>Count</td></tr>
+                <tr><td>2</td><td>Interest Level Breakdown</td><td>Event Interaction</td><td><code>interest_level</code></td><td>Count</td></tr>
+                <tr><td>3</td><td>Companies by Interest</td><td>Event Interaction</td><td><code>company_name</code> &times; <code>interest_level</code></td><td>Count</td></tr>
+                <tr><td>4</td><td>Follow-Up Status</td><td>Event Interaction</td><td><code>follow_up_action</code> &times; <code>follow_up_status</code></td><td>Count</td></tr>
+                <tr><td>5</td><td>Cross-Event Comparison</td><td>Event Interaction</td><td><code>event_name</code></td><td>Count</td></tr>
+                <tr><td>6</td><td>Event Revenue Attribution</td><td>Deals</td><td>Deal stage</td><td>Sum of amount</td></tr>
+            </tbody>
+        </table>
+
+        <p style="font-size: 13px; color: var(--slate-500); margin-top: 8px;">Reports 1-4 are filtered by <code>event_name</code>. Report 6 filters deals by associated contact's <code>lead_source</code> = event name.</p>
+
+        <h3 style="font-size: 16px; margin-top: 32px; margin-bottom: 16px;">Who Uses Which Reports</h3>
 
         <div class="role-grid" style="grid-template-columns: repeat(3, 1fr);">
             <div class="role-card sdr">
-                <h4>Sales Reps See</h4>
+                <h4>Sales Reps</h4>
                 <ul>
-                    <li>Their own meetings and statuses</li>
+                    <li>Reports 1-2 filtered by their name</li>
                     <li>Follow-up tasks assigned to them</li>
-                    <li>Which meetings are pending</li>
                 </ul>
             </div>
             <div class="role-card leadership">
-                <h4>Leadership Sees</h4>
+                <h4>Leadership</h4>
                 <ul>
-                    <li>Full event pipeline dashboard</li>
-                    <li>Companies by interest level</li>
-                    <li>Meeting outcomes & rep activity</li>
-                    <li>Follow-up completion rate</li>
+                    <li>Full event dashboard (reports 1-5)</li>
+                    <li>Google Sheet Summary tab during events</li>
                 </ul>
             </div>
             <div class="role-card marketing">
-                <h4>Marketing Sees</h4>
+                <h4>Marketing</h4>
                 <ul>
-                    <li>Contacts sourced per event</li>
-                    <li>Pipeline generated from event</li>
-                    <li>Side-by-side event comparison</li>
-                    <li>Multi-event touchpoint analysis</li>
+                    <li>Report 5 (cross-event comparison)</li>
+                    <li>Report 6 (revenue attribution)</li>
+                    <li>Standard funnel reports by lead source</li>
                 </ul>
             </div>
         </div>
@@ -1462,7 +1495,7 @@
     <div class="container">
         <span class="section-label">Playbook</span>
         <h2>Event Checklist</h2>
-        <p>Print this out or bookmark it. Every event follows this timeline.</p>
+        <p>Every event follows this timeline.</p>
 
         <table class="data-table">
             <thead>
@@ -1472,7 +1505,7 @@
                 <tr><td><strong>4 weeks before</strong></td><td>Create event Google Sheet from template</td><td>HubSpot Manager</td></tr>
                 <tr><td></td><td>Import full attendee list into Tab 1</td><td>HubSpot Manager</td></tr>
                 <tr><td></td><td>Create <code>#event-[name]</code> Slack channel</td><td>HubSpot Manager</td></tr>
-                <tr><td></td><td>Configure and activate n8n workflows with event name</td><td>HubSpot Manager</td></tr>
+                <tr><td></td><td>Configure and activate automation workflows with event name</td><td>HubSpot Manager</td></tr>
                 <tr><td><strong>2-1 weeks before</strong></td><td>Browse attendee list, mark priority targets</td><td>SDRs</td></tr>
                 <tr><td></td><td>Begin outreach via event app / email / LinkedIn</td><td>SDRs</td></tr>
                 <tr><td></td><td>Update outreach status in Sheet as responses come in</td><td>SDRs</td></tr>

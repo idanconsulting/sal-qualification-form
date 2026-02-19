@@ -1,0 +1,496 @@
+{
+  "name": "Event Meeting Status Sync",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 600],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "event_name",
+              "value": "Manifest 2026",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "search_term",
+              "value": "*manifest*",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-event-config",
+      "name": "Set Event Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"lead_source\",\n      \"operator\": \"CONTAINS_TOKEN\",\n      \"value\": \"{{ $json.search_term }}\"\n    }]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"lead_source\", \"associatedcompanyid\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-p1",
+      "name": "Search P1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst eventName = $('Set Event Config').first().json.event_name;\nconst contacts = (response.results || []).map(c => ({\n  id: c.id,\n  firstname: c.properties?.firstname || '',\n  lastname: c.properties?.lastname || '',\n  email: c.properties?.email || '',\n  lead_source: c.properties?.lead_source || '',\n  companyId: c.properties?.associatedcompanyid || ''\n}));\nconst hasMore = !!response.paging?.next?.after;\nconst after = response.paging?.next?.after || '';\nreturn [{ json: { contacts, eventName, hasMore, after } }];"
+      },
+      "id": "process-p1",
+      "name": "Process P1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-more-p2",
+              "leftValue": "={{ $json.hasMore }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-p2",
+      "name": "IF Has P2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"lead_source\",\n      \"operator\": \"CONTAINS_TOKEN\",\n      \"value\": \"{{ $('Set Event Config').first().json.search_term }}\"\n    }]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"lead_source\", \"associatedcompanyid\"],\n  \"limit\": 100,\n  \"after\": \"{{ $('Process P1').first().json.after }}\"\n}",
+        "options": {}
+      },
+      "id": "search-p2",
+      "name": "Search P2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const p1Data = $('Process P1').first().json;\nconst response = $input.first().json;\nconst p2Contacts = (response.results || []).map(c => ({\n  id: c.id,\n  firstname: c.properties?.firstname || '',\n  lastname: c.properties?.lastname || '',\n  email: c.properties?.email || '',\n  lead_source: c.properties?.lead_source || '',\n  companyId: c.properties?.associatedcompanyid || ''\n}));\nconst contacts = [...p1Data.contacts, ...p2Contacts];\nconst hasMore = !!response.paging?.next?.after;\nconst after = response.paging?.next?.after || '';\nreturn [{ json: { contacts, eventName: p1Data.eventName, hasMore, after } }];"
+      },
+      "id": "merge-p1-p2",
+      "name": "Merge P1+P2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-more-p3",
+              "leftValue": "={{ $json.hasMore }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-p3",
+      "name": "IF Has P3",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"lead_source\",\n      \"operator\": \"CONTAINS_TOKEN\",\n      \"value\": \"{{ $('Set Event Config').first().json.search_term }}\"\n    }]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"lead_source\", \"associatedcompanyid\"],\n  \"limit\": 100,\n  \"after\": \"{{ $('Merge P1+P2').first().json.after }}\"\n}",
+        "options": {}
+      },
+      "id": "search-p3",
+      "name": "Search P3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 80],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const p12Data = $('Merge P1+P2').first().json;\nconst response = $input.first().json;\nconst p3Contacts = (response.results || []).map(c => ({\n  id: c.id,\n  firstname: c.properties?.firstname || '',\n  lastname: c.properties?.lastname || '',\n  email: c.properties?.email || '',\n  lead_source: c.properties?.lead_source || '',\n  companyId: c.properties?.associatedcompanyid || ''\n}));\nconst contacts = [...p12Data.contacts, ...p3Contacts];\nreturn [{ json: { contacts, eventName: p12Data.eventName, hasMore: false, after: '' } }];"
+      },
+      "id": "merge-all",
+      "name": "Merge All Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hub node: receives accumulated contacts from whichever pagination branch completed\nconst data = $input.first().json;\nconst contacts = data.contacts;\nconst eventName = data.eventName;\n\n// Build contactMap for quick lookup\nconst contactMap = {};\nfor (const c of contacts) {\n  contactMap[c.id] = c;\n}\n\n// Prepare batch inputs for association lookups\nconst batchInputs = { inputs: contacts.map(c => ({ id: c.id })) };\n\n// Prepare company batch inputs for name lookups\nconst companyIds = [...new Set(contacts.map(c => c.companyId).filter(Boolean))];\nconst companyBatchInputs = {\n  inputs: companyIds.map(id => ({ id })),\n  properties: ['name']\n};\n\nreturn [{\n  json: {\n    contacts,\n    contactMap,\n    batchInputs,\n    companyBatchInputs,\n    eventName,\n    totalContacts: contacts.length\n  }\n}];"
+      },
+      "id": "all-contacts-ready",
+      "name": "All Contacts Ready",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v4/associations/contacts/meetings/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.batchInputs) }}",
+        "options": {}
+      },
+      "id": "batch-meeting-assoc",
+      "name": "Batch Meeting Assoc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const assocResponse = $input.first().json;\nconst hubData = $('All Contacts Ready').first().json;\nconst results = assocResponse.results || [];\nconst contactsWithMeetings = [];\nconst meetingIds = new Set();\nconst contactMeetingMap = {};\n\nfor (const result of results) {\n  const contactId = result.from?.id;\n  const meetings = result.to || [];\n  if (meetings.length > 0 && contactId) {\n    contactsWithMeetings.push(contactId);\n    contactMeetingMap[contactId] = meetings.map(m => m.toObjectId);\n    for (const m of meetings) {\n      meetingIds.add(m.toObjectId);\n    }\n  }\n}\n\nconst meetingInputs = Array.from(meetingIds).map(id => ({ id }));\nconst meetingBatchInputs = {\n  inputs: meetingInputs,\n  properties: ['hs_meeting_outcome', 'hs_meeting_start_time', 'hs_meeting_title', 'hubspot_owner_id']\n};\n\nreturn [{\n  json: {\n    contactsWithMeetings,\n    contactMeetingMap,\n    meetingBatchInputs,\n    hasMeetings: contactsWithMeetings.length > 0,\n    totalWithMeetings: contactsWithMeetings.length,\n    totalMeetings: meetingIds.size\n  }\n}];"
+      },
+      "id": "process-meetings",
+      "name": "Process Meetings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-meetings",
+              "leftValue": "={{ $json.hasMeetings }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-meetings",
+      "name": "IF Has Meetings",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3100, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/meetings/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.meetingBatchInputs) }}",
+        "options": {}
+      },
+      "id": "batch-read-meetings",
+      "name": "Batch Read Meetings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/companies/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('All Contacts Ready').first().json.companyBatchInputs) }}",
+        "options": {}
+      },
+      "id": "batch-read-companies",
+      "name": "Batch Read Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3540, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const companyResponse = $input.first().json;\nconst meetingResponse = $('Batch Read Meetings').first().json;\nconst meetingData = $('Process Meetings').first().json;\nconst hubData = $('All Contacts Ready').first().json;\n\nconst contactMap = hubData.contactMap;\nconst contactsWithMeetings = meetingData.contactsWithMeetings;\nconst contactMeetingMap = meetingData.contactMeetingMap;\nconst eventName = hubData.eventName;\n\n// Build meeting lookup\nconst meetingMap = {};\nfor (const m of (meetingResponse.results || [])) {\n  meetingMap[m.id] = {\n    outcome: m.properties?.hs_meeting_outcome || '',\n    startTime: m.properties?.hs_meeting_start_time || '',\n    title: m.properties?.hs_meeting_title || '',\n    ownerId: m.properties?.hubspot_owner_id || ''\n  };\n}\n\n// Build company name lookup\nconst companyNameMap = {};\nfor (const c of (companyResponse.results || [])) {\n  companyNameMap[c.id] = c.properties?.name || '';\n}\n\n// Status priority for roll-up (higher = better)\nconst statusPriority = { completed: 4, scheduled: 3, no_show: 2, cancelled: 1, none: 0 };\n\n// Owner name map\nconst ownerNames = {\n  '76139933': 'Liza Dymava',\n  '87078486': 'Lisa Ceresne',\n  '76222677': 'Yoav Naveh',\n  '76301426': 'Yair Weinberger',\n  '83889917': 'Megan Morreale'\n};\n\nconst contactUpdates = [];\nconst companyContacts = {};\n\nfor (const contactId of contactsWithMeetings) {\n  const contact = contactMap[contactId];\n  if (!contact) continue;\n\n  const meetingIds = contactMeetingMap[contactId] || [];\n  let bestStatus = 'none';\n  let latestMeeting = null;\n\n  for (const meetingId of meetingIds) {\n    const meeting = meetingMap[meetingId];\n    if (!meeting) continue;\n\n    let status = 'scheduled';\n    const outcome = (meeting.outcome || '').toUpperCase();\n    if (outcome === 'COMPLETED') status = 'completed';\n    else if (outcome === 'NO_SHOW' || outcome === 'NOSHOW') status = 'no_show';\n    else if (outcome === 'CANCELLED' || outcome === 'CANCELED') status = 'cancelled';\n    else status = 'scheduled';\n\n    if ((statusPriority[status] || 0) > (statusPriority[bestStatus] || 0)) {\n      bestStatus = status;\n      latestMeeting = meeting;\n    }\n  }\n\n  contactUpdates.push({ id: contactId, status: bestStatus });\n\n  const companyId = contact.companyId;\n  if (companyId) {\n    if (!companyContacts[companyId]) companyContacts[companyId] = [];\n    companyContacts[companyId].push({\n      contactId,\n      contactName: (contact.firstname + ' ' + contact.lastname).trim(),\n      email: contact.email,\n      status: bestStatus,\n      meetingDate: latestMeeting?.startTime || '',\n      meetingOwner: latestMeeting?.ownerId ? (ownerNames[latestMeeting.ownerId] || latestMeeting.ownerId) : ''\n    });\n  }\n}\n\n// Roll up to company level\nconst companyUpdates = [];\nconst sheetRows = [];\n\nfor (const [companyId, contacts] of Object.entries(companyContacts)) {\n  let bestStatus = 'none';\n  for (const c of contacts) {\n    if ((statusPriority[c.status] || 0) > (statusPriority[bestStatus] || 0)) {\n      bestStatus = c.status;\n    }\n  }\n  companyUpdates.push({ id: companyId, status: bestStatus });\n\n  const companyName = companyNameMap[companyId] || companyId;\n  const contactNames = contacts.map(c => c.contactName).join(', ');\n  let meetingDate = contacts[0]?.meetingDate || '';\n  if (meetingDate) {\n    try {\n      const d = new Date(meetingDate);\n      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n      meetingDate = months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' ' + d.getUTCFullYear();\n    } catch(e) {}\n  }\n  const scheduledBy = contacts[0]?.meetingOwner || '';\n  const statusDisplay = bestStatus.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n  const hubspotLink = 'https://app.hubspot.com/contacts/48653760/record/0-2/' + companyId;\n\n  sheetRows.push([companyName, contactNames, meetingDate, statusDisplay, scheduledBy, hubspotLink]);\n}\n\n// Sort by status priority\nconst statusOrder = { 'Completed': 1, 'Scheduled': 2, 'No Show': 3, 'Cancelled': 4, 'None': 5 };\nsheetRows.sort((a, b) => (statusOrder[a[3]] || 99) - (statusOrder[b[3]] || 99));\n\nconst summary = {\n  completed: contactUpdates.filter(c => c.status === 'completed').length,\n  noShow: contactUpdates.filter(c => c.status === 'no_show').length,\n  scheduled: contactUpdates.filter(c => c.status === 'scheduled').length,\n  cancelled: contactUpdates.filter(c => c.status === 'cancelled').length\n};\n\nconst contactBatchPayload = {\n  inputs: contactUpdates.map(c => ({\n    id: c.id,\n    properties: { event_meeting_status: c.status }\n  }))\n};\n\nconst companyBatchPayload = {\n  inputs: companyUpdates.map(c => ({\n    id: c.id,\n    properties: { event_meeting_status: c.status, event_name: eventName }\n  }))\n};\n\nreturn [{\n  json: {\n    contactBatchPayload,\n    companyBatchPayload,\n    sheetRows,\n    summary,\n    totalContacts: contactUpdates.length,\n    totalCompanies: companyUpdates.length\n  }\n}];"
+      },
+      "id": "compute-statuses",
+      "name": "Compute Statuses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3760, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/batch/update",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.contactBatchPayload) }}",
+        "options": {}
+      },
+      "id": "batch-update-contacts",
+      "name": "Batch Update Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3980, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/companies/batch/update",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Compute Statuses').first().json.companyBatchPayload) }}",
+        "options": {}
+      },
+      "id": "batch-update-companies",
+      "name": "Batch Update Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4200, 400],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{"node": "Set Event Config", "type": "main", "index": 0}]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [{"node": "Set Event Config", "type": "main", "index": 0}]
+      ]
+    },
+    "Set Event Config": {
+      "main": [
+        [{"node": "Search P1", "type": "main", "index": 0}]
+      ]
+    },
+    "Search P1": {
+      "main": [
+        [{"node": "Process P1", "type": "main", "index": 0}]
+      ]
+    },
+    "Process P1": {
+      "main": [
+        [{"node": "IF Has P2", "type": "main", "index": 0}]
+      ]
+    },
+    "IF Has P2": {
+      "main": [
+        [{"node": "Search P2", "type": "main", "index": 0}],
+        [{"node": "All Contacts Ready", "type": "main", "index": 0}]
+      ]
+    },
+    "Search P2": {
+      "main": [
+        [{"node": "Merge P1+P2", "type": "main", "index": 0}]
+      ]
+    },
+    "Merge P1+P2": {
+      "main": [
+        [{"node": "IF Has P3", "type": "main", "index": 0}]
+      ]
+    },
+    "IF Has P3": {
+      "main": [
+        [{"node": "Search P3", "type": "main", "index": 0}],
+        [{"node": "All Contacts Ready", "type": "main", "index": 0}]
+      ]
+    },
+    "Search P3": {
+      "main": [
+        [{"node": "Merge All Pages", "type": "main", "index": 0}]
+      ]
+    },
+    "Merge All Pages": {
+      "main": [
+        [{"node": "All Contacts Ready", "type": "main", "index": 0}]
+      ]
+    },
+    "All Contacts Ready": {
+      "main": [
+        [{"node": "Batch Meeting Assoc", "type": "main", "index": 0}]
+      ]
+    },
+    "Batch Meeting Assoc": {
+      "main": [
+        [{"node": "Process Meetings", "type": "main", "index": 0}]
+      ]
+    },
+    "Process Meetings": {
+      "main": [
+        [{"node": "IF Has Meetings", "type": "main", "index": 0}]
+      ]
+    },
+    "IF Has Meetings": {
+      "main": [
+        [{"node": "Batch Read Meetings", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Batch Read Meetings": {
+      "main": [
+        [{"node": "Batch Read Companies", "type": "main", "index": 0}]
+      ]
+    },
+    "Batch Read Companies": {
+      "main": [
+        [{"node": "Compute Statuses", "type": "main", "index": 0}]
+      ]
+    },
+    "Compute Statuses": {
+      "main": [
+        [{"node": "Batch Update Contacts", "type": "main", "index": 0}]
+      ]
+    },
+    "Batch Update Contacts": {
+      "main": [
+        [{"node": "Batch Update Companies", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

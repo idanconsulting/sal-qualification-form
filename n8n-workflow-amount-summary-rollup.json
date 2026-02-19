@@ -1,0 +1,307 @@
+{
+  "name": "Workflow Amount Summary Rollup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "workflow-amount-rollup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Service Change",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "workflow-amount-rollup"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.hubspot.com/crm/v4/objects/services/{{ $json.body.serviceId }}/associations/deals",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {}
+      },
+      "id": "http-get-deal-associations",
+      "name": "HTTP - Get Associated Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const associations = $input.first().json.results || [];\nconst dealIds = associations.map(a => a.toObjectId);\n\nif (dealIds.length === 0) {\n  return [{ json: { hasDeal: false, dealId: null } }];\n}\n\n// Output one item per deal so subsequent nodes process each\nreturn dealIds.map(id => ({\n  json: { hasDeal: true, dealId: id }\n}));"
+      },
+      "id": "code-extract-deal-ids",
+      "name": "Code - Extract Deal IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-deal",
+              "leftValue": "={{ $json.hasDeal }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-deal",
+      "name": "IF - Has Deal",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.hubspot.com/crm/v4/objects/deals/{{ $json.dealId }}/associations/services",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {}
+      },
+      "id": "http-get-service-associations",
+      "name": "HTTP - Get Deal Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const associations = item.json.results || [];\n  const serviceIds = associations.map(a => a.toObjectId);\n  results.push({\n    json: {\n      dealId: $node[\"Code - Extract Deal IDs\"].json.dealId,\n      serviceIds,\n      hasServices: serviceIds.length > 0\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "code-extract-service-ids",
+      "name": "Code - Extract Service IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/services/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": {{ JSON.stringify($json.serviceIds.map(id => ({ id }))) }},\n  \"properties\": [\"amount\", \"hs_name\"]\n}",
+        "options": {}
+      },
+      "id": "http-batch-read-services",
+      "name": "HTTP - Batch Read Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 200],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const batchResponse = $input.first().json;\nconst services = batchResponse.results || [];\nconst dealId = $node[\"Code - Extract Service IDs\"].json.dealId;\n\n// Sum all amounts, treating null/undefined/empty as 0\nconst totalAmount = services.reduce((sum, svc) => {\n  const amount = parseFloat(svc.properties?.amount);\n  return sum + (isNaN(amount) ? 0 : amount);\n}, 0);\n\n// Build a summary for logging\nconst breakdown = services.map(svc => ({\n  name: svc.properties?.hs_name || 'Unknown',\n  amount: parseFloat(svc.properties?.amount) || 0\n}));\n\nreturn [{\n  json: {\n    dealId,\n    totalAmount,\n    serviceCount: services.length,\n    breakdown\n  }\n}];"
+      },
+      "id": "code-sum-amounts",
+      "name": "Code - Sum Amounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.hubspot.com/crm/v3/objects/deals/{{ $json.dealId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"amount_summary_of_workflows\": \"{{ $json.totalAmount }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "http-update-deal",
+      "name": "HTTP - Update Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 200],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"updated\",\n  \"dealId\": \"{{ $json.id }}\",\n  \"amount_summary_of_workflows\": {{ $node[\"Code - Sum Amounts\"].json.totalAmount }}\n}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond - Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2220, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"no_deal_associated\"}",
+        "options": {}
+      },
+      "id": "respond-no-deal",
+      "name": "Respond - No Deal",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Service Change": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get Associated Deals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get Associated Deals": {
+      "main": [
+        [
+          {
+            "node": "Code - Extract Deal IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Extract Deal IDs": {
+      "main": [
+        [
+          {
+            "node": "IF - Has Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Has Deal": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get Deal Services",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - No Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get Deal Services": {
+      "main": [
+        [
+          {
+            "node": "Code - Extract Service IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Extract Service IDs": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Batch Read Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Batch Read Services": {
+      "main": [
+        [
+          {
+            "node": "Code - Sum Amounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Sum Amounts": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Update Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Update Deal": {
+      "main": [
+        [
+          {
+            "node": "Respond - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null
+}

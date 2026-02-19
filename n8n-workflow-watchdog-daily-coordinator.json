@@ -29,6 +29,17 @@
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const run_id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });\nreturn [{ json: { run_id } }];"
+      },
+      "id": "generate-run-id",
+      "name": "Code - Generate Run ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [360, 400]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-orphaned-contacts",
         "options": { "timeout": 30000 }
@@ -150,7 +161,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const results = $input.all().map(item => item.json);\n\n// Count by severity\nconst failures = results.filter(r => r.status === 'fail');\nconst critical = failures.filter(r => r.severity === 'critical').length;\nconst high = failures.filter(r => r.severity === 'high').length;\nconst medium = failures.filter(r => r.severity === 'medium').length;\nconst passed = results.filter(r => r.status === 'pass').length;\n\n// Build Slack blocks\nconst blocks = [];\n\n// Header\nblocks.push({\n  type: 'header',\n  text: { type: 'plain_text', text: 'HubSpot Watchdog — Daily Report' }\n});\n\n// Summary line\nconst summaryParts = [];\nif (critical > 0) summaryParts.push(`${critical} Critical`);\nif (high > 0) summaryParts.push(`${high} High`);\nif (medium > 0) summaryParts.push(`${medium} Medium`);\nsummaryParts.push(`${passed} Passed`);\n\nblocks.push({\n  type: 'section',\n  text: { type: 'mrkdwn', text: summaryParts.join('  |  ') }\n});\n\nblocks.push({ type: 'divider' });\n\n// Detail blocks for each failing check\nfor (const result of failures) {\n  const checkName = result.check_id.replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n  blocks.push({\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: `*${checkName} (${result.count} found)*`\n    }\n  });\n\n  // Show first 5 items max\n  const displayItems = (result.items || []).slice(0, 5);\n  for (const item of displayItems) {\n    blocks.push({\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `• *${item.record_name}* — ${item.details}\\n<${item.hubspot_url}|View in HubSpot>`\n      }\n    });\n  }\n\n  if ((result.items || []).length > 5) {\n    blocks.push({\n      type: 'section',\n      text: { type: 'mrkdwn', text: `_...and ${result.items.length - 5} more_` }\n    });\n  }\n\n  blocks.push({ type: 'divider' });\n}\n\n// Footer\nblocks.push({\n  type: 'context',\n  elements: [{ type: 'mrkdwn', text: 'Reply to this message to add exceptions or corrections' }]\n});\n\n// Build results array for Supabase\nconst supabaseResults = results.map(r => ({\n  check_id: r.check_id,\n  status: r.status,\n  violation_count: r.count || 0,\n  violations: r.items || [],\n  run_at: new Date().toISOString()\n}));\n\nreturn [{\n  json: {\n    hasFailures: failures.length > 0,\n    slackPayload: {\n      text: `Watchdog Daily: ${failures.length} checks failed`,\n      blocks: blocks\n    },\n    supabaseResults: supabaseResults\n  }\n}];"
+        "jsCode": "const results = $input.all().map(item => item.json);\nconst run_id = $node[\"Code - Generate Run ID\"].json.run_id;\n\n// Count by severity\nconst failures = results.filter(r => r.status === 'fail');\nconst critical = failures.filter(r => r.severity === 'critical').length;\nconst high = failures.filter(r => r.severity === 'high').length;\nconst medium = failures.filter(r => r.severity === 'medium').length;\nconst passed = results.filter(r => r.status === 'pass').length;\n\n// Build compact Slack message\nconst summaryParts = [];\nif (critical > 0) summaryParts.push(`🔴 ${critical} Critical`);\nif (high > 0) summaryParts.push(`🟠 ${high} High`);\nif (medium > 0) summaryParts.push(`🟡 ${medium} Medium`);\nsummaryParts.push(`✅ ${passed} Passed`);\n\nconst dashboardUrl = `https://sal-qualification-form.vercel.app/watchdog/run/${run_id}`;\n\nconst blocks = [\n  {\n    type: 'header',\n    text: { type: 'plain_text', text: '🔍 HubSpot Watchdog — Daily Report' }\n  },\n  {\n    type: 'section',\n    text: { type: 'mrkdwn', text: summaryParts.join('  |  ') }\n  },\n  {\n    type: 'section',\n    text: { type: 'mrkdwn', text: `👉 <${dashboardUrl}|View full report>` }\n  }\n];\n\n// Build results for Supabase — include run_id and run_type\nconst supabaseResults = results.map(r => ({\n  check_id: r.check_id,\n  run_id: run_id,\n  run_type: 'daily',\n  status: r.status,\n  severity: r.severity,\n  violation_count: r.count || 0,\n  violations: r.items || [],\n  run_at: new Date().toISOString()\n}));\n\nreturn [{\n  json: {\n    hasFailures: failures.length > 0,\n    slackPayload: {\n      text: `Watchdog Daily: ${failures.length} checks failed`,\n      blocks: blocks\n    },\n    supabaseResults: supabaseResults\n  }\n}];"
       },
       "id": "format-digest",
       "name": "Code - Format Slack Digest",
@@ -204,7 +215,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "SLACK_WEBHOOK_URL",
+        "url": "https://hooks.slack.com/services/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",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.slackPayload) }}",
@@ -214,24 +225,22 @@
       "name": "HTTP - Send Slack Alert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1440, 500]
+      "position": [1440, 500],
+      "continueOnFail": true
     }
   ],
   "connections": {
     "Schedule - Daily 8AM": {
       "main": [[
-        { "node": "HTTP - Check Orphaned Contacts", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Missing Contact Fields", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Missing Company Source", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Missing Company Name", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Orphaned Companies", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Orphaned Deals", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Stale Companies", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Duplicate Deals", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Contact Multi-Company", "type": "main", "index": 0 }
+        { "node": "Code - Generate Run ID", "type": "main", "index": 0 }
       ]]
     },
     "Webhook - Manual Trigger": {
+      "main": [[
+        { "node": "Code - Generate Run ID", "type": "main", "index": 0 }
+      ]]
+    },
+    "Code - Generate Run ID": {
       "main": [[
         { "node": "HTTP - Check Orphaned Contacts", "type": "main", "index": 0 },
         { "node": "HTTP - Check Missing Contact Fields", "type": "main", "index": 0 },

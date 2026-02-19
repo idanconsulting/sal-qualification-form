@@ -100,6 +100,33 @@ Auto-generated aggregations:
 - Interest level distribution
 - Follow-up action summary
 
+### Tab 4: "Follow-Up Review" (post-event, auto-generated)
+
+| Column | Purpose |
+|--------|---------|
+| Company | Company name |
+| Contact Name | Primary contact met |
+| Interest Level | Hot / Warm / Cool / No-show |
+| Meeting Notes | Summary of what was discussed |
+| Recommended Sequence | Pre-filled based on interest level |
+| Action | Approve / I'll Handle (set by AE/Rep) |
+| Status | Pending / Enrolled in Sequence / Claimed by Rep / Completed |
+
+## Lifecycle Stages
+
+Event contacts follow a specific lifecycle progression tied to meeting status:
+
+| Meeting Status | Lifecycle Stage | Rationale |
+|---------------|----------------|-----------|
+| Meeting scheduled (before event) | MQL | Intent shown by booking, but no conversation yet |
+| Meeting completed (happened) | SQL | Actual conversation occurred, qualified by sales |
+| No-show | MQL | Meeting was booked but didn't happen — stays MQL |
+| Booth visit / Walk-up (no prior booking) | SQL | Direct interaction happened, treated as sales-qualified |
+
+**Key rule:** A contact becomes an MQL when a meeting is **scheduled** before the event. They only move to SQL when the meeting actually **happens**. This ensures the pipeline reflects real conversations, not just calendar bookings.
+
+If a contact is already at a later lifecycle stage (e.g., Opportunity), the event interaction does not downgrade them.
+
 ## Company-Centric Tracking
 
 Reindeer AI tracks companies primarily. Multiple contacts from the same company may be met during an event. The system handles this by:
@@ -121,6 +148,8 @@ Reindeer AI tracks companies primarily. Multiple contacts from the same company 
 4. Write new row or update existing row in "Meetings & Interactions" tab
 5. Reply in Slack thread confirming what was captured
 
+**Handling partial or unclear input:** If the message is missing key fields (e.g., contact name, interest level), the AI writes what it can to the Sheet and flags the row as incomplete. The thread reply lists what was captured and asks the rep to provide the missing information. When the rep replies in the thread with the missing details, the AI updates the existing row.
+
 ### Workflow: Google Sheet → HubSpot Sync
 
 **Trigger:** Scheduled (every 15-30 min during event, daily otherwise) + manual trigger
@@ -140,15 +169,23 @@ Reindeer AI tracks companies primarily. Multiple contacts from the same company 
 
 1. Read all "Meetings & Interactions" rows
 2. Group by company → generate company-level summary
-3. For each company:
-   - **Hot:** Create follow-up task + flag for sequence enrollment (pending review)
-   - **Warm:** Create follow-up task with 3-day deadline
-   - **Cool:** Create task with 1-week deadline
-   - **No-show:** Create re-engagement task
-4. Generate "Follow-Up Review" tab in Sheet with proposed actions
+3. For each company, assign recommended sequence based on highest interest level:
+   - **Hot:** "Event - Hot Lead" sequence
+   - **Warm:** "Event - Warm Lead" sequence
+   - **Cool:** "Event - Cool Lead" sequence
+   - **No-show:** "Event - No Show" sequence
+4. Generate "Follow-Up Review" tab in Sheet with columns: Company, Contact, Interest Level, Notes, Recommended Sequence, Action (Approve / I'll Handle), Status (Pending)
 5. Send Slack summary to team
 
-**Follow-ups require review before sequences fire.** The "Follow-Up Review" tab lets reps/AEs approve or modify proposed actions before enrollment.
+### Workflow: Follow-Up Enrollment Processor
+
+**Trigger:** Scheduled (every 15 minutes while Follow-Up Review tab is active)
+
+1. Read "Follow-Up Review" tab — filter for rows where Action is set and Status = "Pending"
+2. For each approved row:
+   - **Approve** → enroll contact in recommended sequence via HubSpot API, update `follow_up_status = "Enrolled in Sequence"` on Sheet + Event Interaction
+   - **I'll Handle** → create HubSpot task assigned to rep, update `follow_up_status = "Claimed by Rep"` on Sheet + Event Interaction
+3. Update Status column in Sheet to match
 
 ### Existing Workflow: Event Meeting Status Sync (Enhanced)
 
@@ -175,6 +212,9 @@ If event data were stored as contact properties, attending a second event would 
 | `follow_up_action` | Dropdown | Demo / Send Info / Intro to AE / Nurture / None |
 | `notes` | Text | Meeting notes |
 | `rep_name` | Text | Who from Reindeer AI |
+| `contact_name` | Text | Stored at creation for readability in reports |
+| `company_name` | Text | Stored at creation for readability in reports |
+| `follow_up_status` | Dropdown | Pending / Approved / Enrolled in Sequence / Claimed by Rep / Completed |
 
 ### Associations
 
@@ -203,24 +243,69 @@ Only the `event_outreach_status` property remains on the contact level for pre-e
 - `event_meeting_status` (contact + company) — from Event Meeting Status Sync workflow
 - `event_name` (company) — already exists
 - `lead_source` — set to event name for sourced contacts
+- `lifecyclestage` — set based on meeting status (see Lifecycle Stages section above)
 
 ## Reporting
 
-All event reports use the **Event Interaction custom object**, enabling cross-event analysis without data loss.
+All activity/quality/follow-up reports use the **Event Interaction custom object** (single-object reports). Revenue attribution uses standard **Deal reports** filtered by contact's `lead_source`.
+
+### HubSpot Reports (one dashboard per event)
+
+| # | Report Name | Object | Group By | Metric | Filter |
+|---|------------|--------|----------|--------|--------|
+| 1 | Meeting Activity by Rep | Event Interaction | `rep_name` × `meeting_status` | Count | `event_name` |
+| 2 | Interest Level Breakdown | Event Interaction | `interest_level` | Count | `event_name` |
+| 3 | Companies by Interest | Event Interaction | `company_name` × `interest_level` | Count | `event_name` |
+| 4 | Follow-Up Status | Event Interaction | `follow_up_action` × `follow_up_status` | Count | `event_name` |
+| 5 | Cross-Event Comparison | Event Interaction | `event_name` | Count | None |
+| 6 | Event Revenue Attribution | Deals | Deal stage | Sum of amount | Contact's `lead_source` = event name |
+
+Reports 1-5 are cloned per event (just change the filter). Report 6 uses standard deal reporting with a cross-object filter on the contact's `lead_source`.
 
 ### For Sales Reps
-- "My Event Meetings" — Event Interactions filtered by rep_name, grouped by event
-- Follow-up tasks assigned to them
+- Reports 1-2 filtered by their `rep_name`
+- Follow-up tasks assigned to them in HubSpot
 
 ### For Sales Leadership
-- "Event Pipeline Dashboard" — Event Interactions grouped by company and interest level
-- Cross-event view: "Which companies have we met at 2+ events?"
-- Google Sheet Summary tab for real-time event monitoring
+- Full event dashboard (reports 1-5)
+- Google Sheet Summary tab for real-time monitoring during events
 
 ### For Marketing
-- "Event ROI" — Event Interactions per event, pipeline generated, meetings held vs. targeted
-- "Event Comparison" — side-by-side metrics across all events (contacts met, hot leads, conversions)
+- Report 5 (cross-event comparison) + Report 6 (revenue attribution)
 - Lead source filter across standard funnel reports
+
+## Follow-Up Process
+
+### Sequence Templates
+
+HubSpot Manager creates these once. AEs can clone and customize per event or per lead.
+
+| Template | For | Cadence |
+|----------|-----|---------|
+| Event - Hot Lead | Completed meetings with high interest | 3 emails over 1 week |
+| Event - Warm Lead | Interested but no clear next step | 3 emails over 2 weeks |
+| Event - Cool Lead | Brief interaction, no urgency | 2 emails over 3 weeks |
+| Event - No Show | Scheduled but didn't show up | 2 emails over 1 week, re-engage |
+
+### Follow-Up Review Flow
+
+1. HubSpot Manager runs the post-event follow-up generator workflow
+2. System creates a **"Follow-Up Review" tab** in the event Google Sheet with one row per company:
+   - Company name, contact name, interest level, meeting notes
+   - Recommended sequence (pre-filled based on interest level)
+   - **Action column:** `Approve` or `I'll Handle`
+   - Status: starts as `Pending`
+3. AEs/Reps review the tab and set each row to `Approve` or `I'll Handle`
+4. n8n picks up approvals every 15 minutes:
+   - **Approve** → enrolls contact in the recommended sequence via HubSpot API, sets `follow_up_status = "Enrolled in Sequence"` on both the Sheet and Event Interaction
+   - **I'll Handle** → creates a HubSpot task assigned to the rep, sets `follow_up_status = "Claimed by Rep"` on both
+5. When a sequence completes or rep marks the task done → `follow_up_status` updates to `Completed`
+
+### Follow-Up Tracking
+
+Tracked in two places:
+- **Google Sheet** — the Follow-Up Review tab shows real-time status during the review period (first 1-2 weeks)
+- **Event Interaction in HubSpot** — `follow_up_status` field updated for long-term reporting across events
 
 ## Event Lifecycle Playbook
 
