@@ -1,11 +1,14 @@
 # HubSpot Data Watchdog — Design Document
 
 **Date:** 2026-02-17
+**Updated:** 2026-02-19
 **Status:** Approved
 
 ## Overview
 
-A comprehensive CRM data quality monitoring system that detects anomalies in HubSpot and reports them to Slack. Uses a hybrid architecture: deterministic checks for well-defined rules, AI-powered checks for fuzzy matching and root cause analysis. Self-adjusting via Slack feedback loop.
+A comprehensive CRM data quality monitoring system that detects anomalies in HubSpot and reports them via a web dashboard linked from Slack. Uses a hybrid architecture: deterministic checks for well-defined rules, AI-powered checks for fuzzy matching and root cause analysis. Self-adjusting via dashboard actions and Slack feedback loop.
+
+> **Note (2026-02-19):** The Slack digest has been replaced with a compact summary + link to a Watchdog Dashboard (`/watchdog` route in the React app). Full violation details, actions, and resolution tracking now live in the dashboard. See `docs/plans/2026-02-19-watchdog-dashboard-design.md` for the dashboard design.
 
 ---
 
@@ -14,7 +17,7 @@ A comprehensive CRM data quality monitoring system that detects anomalies in Hub
 ### Three Layers
 
 **Layer 1 — Coordinator Workflows (n8n)**
-Fan-out pattern: scheduled trigger → parallel HTTP calls to check sub-workflows → collect results → evaluate → Slack digest.
+Fan-out pattern: scheduled trigger → generate `run_id` → parallel HTTP calls to check sub-workflows → collect results → save to Supabase with `run_id` → compact Slack summary with dashboard link.
 
 **Layer 2 — Check Sub-Workflows (n8n)**
 Each check is its own n8n workflow with a webhook endpoint. Returns a standardized result format.
@@ -57,42 +60,50 @@ Every check sub-workflow returns this JSON:
 
 1. **Schedule Trigger** — "Every day at 8am"
 
-2. **HTTP Request (Supabase)** — Fetch enabled daily checks
+2. **Code node (Generate run_id)** — Creates a UUID to group all results from this run.
+   ```javascript
+   const crypto = require('crypto');
+   return [{ json: { run_id: crypto.randomUUID() } }];
+   ```
+
+3. **HTTP Request (Supabase)** — Fetch enabled daily checks
    ```
    GET {supabase_url}/rest/v1/watchdog_checks?schedule=eq.daily&enabled=eq.true
    Headers: apikey, Authorization: Bearer {service_role_key}
    ```
    Returns list of checks with their webhook_urls.
 
-3. **Fan-out HTTP Requests** — Call each check's webhook_url in parallel
+4. **Fan-out HTTP Requests** — Call each check's webhook_url in parallel
    Each sub-workflow runs independently and returns its standardized result.
-   Use the same parallel fan-out pattern as the existing health check system (one HTTP Request node per check, all triggered from the schedule node, feeding into a single Collect Results node).
+   Pass `run_id` as a query parameter to each webhook call.
 
-4. **Collect Results (Merge node, mode: append)** — Combine all results into one array.
+5. **Collect Results (Merge node, mode: append)** — Combine all results into one array.
 
-5. **HTTP Request (Supabase)** — Save results
+6. **HTTP Request (Supabase)** — Save results
    ```
    POST {supabase_url}/rest/v1/watchdog_results
-   Body: array of {check_id, run_at, status, violation_count, violations, root_cause}
+   Body: array of {check_id, run_id, run_type: "daily", run_at, status, violation_count, violations, root_cause}
    ```
 
-6. **Code node (Build Slack Digest)** — Format results into Slack Block Kit message.
-   Groups violations by severity (critical → high → medium).
-   Includes action buttons per violation.
-   See "Slack Experience" section for exact format.
+7. **Code node (Build Compact Slack Summary)** — Format results into a 3-line summary with dashboard link.
+   ```
+   🔍 HubSpot Watchdog — Daily Report
+   🔴 3 Critical  |  🟠 5 High  |  🟡 2 Medium  |  ✅ 4 Passed
+   👉 View full report: https://reindeer-sal.vercel.app/watchdog/run/<run_id>
+   ```
 
-7. **IF node** — Any failures?
+8. **IF node** — Any failures?
    Condition: `violations.length > 0`
    - True → Send Slack Alert
    - False → End (silent)
 
-8. **HTTP Request (Slack)** — POST to Slack webhook with formatted blocks.
+9. **HTTP Request (Slack)** — POST to Slack webhook with compact summary.
 
 ### Hourly Coordinator
 
 **Schedule:** Every hour at :00
 
-Same pattern as Daily but queries `schedule=eq.hourly`. Only runs time-sensitive checks (meeting-status-mismatch, lifecycle-pipeline-mismatch).
+Same pattern as Daily but queries `schedule=eq.hourly`. Only runs time-sensitive checks (meeting-status-mismatch, lifecycle-pipeline-mismatch). Also generates its own `run_id` and saves results with `run_type: "hourly"`.
 
 ### Real-Time
 
@@ -719,13 +730,24 @@ CREATE TABLE watchdog_exceptions (
 CREATE TABLE watchdog_results (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   check_id        text NOT NULL REFERENCES watchdog_checks(id),
+  run_id          uuid,                       -- groups results from one coordinator run
+  run_type        text,                       -- 'daily' or 'hourly'
   run_at          timestamptz DEFAULT now(),
   status          text NOT NULL,              -- 'pass', 'fail', 'error'
   violation_count int NOT NULL DEFAULT 0,
   violations      jsonb,                      -- full details array
+  resolutions     jsonb DEFAULT '{}',         -- per-violation resolution status keyed by record_id
   root_cause      text,                       -- LLM explanation if enriched
   duration_ms     int                         -- how long the check took
 );
+```
+
+The `resolutions` field tracks per-violation actions taken from the dashboard:
+```json
+{
+  "123": { "status": "fixed", "resolved_by": "idan", "resolved_at": "2026-02-19T10:00:00Z" },
+  "456": { "status": "exception", "exception_id": "uuid-of-exception" }
+}
 ```
 
 ### Table: `watchdog_feedback`
@@ -768,53 +790,31 @@ INSERT INTO watchdog_checks (id, tier, severity, schedule, webhook_url, instruct
 
 ## Slack Experience
 
-### Digest Message Format (Block Kit)
+> **Updated 2026-02-19:** Slack now shows a compact summary with a link to the Watchdog Dashboard. All violation details and actions have moved to the dashboard.
+
+### Compact Slack Summary
 
 ```
 🔍 HubSpot Watchdog — Daily Report
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 3 Critical  |  🟠 5 High  |  🟡 2 Medium  |  ✅ 4 Passed
 
-🔴 3 Critical  🟡 5 High  🟢 12 Checks Passed
-
-▸ Duplicate Companies (2 found)
-  • "Acme Inc" ↔ "Acme Incorporated" — same domain acme.com
-    Root cause: Acme Inc created by import (Feb 10),
-    Acme Incorporated created manually by Sarah (Feb 14)
-  • "Nova Labs" ↔ "Nova Labs UK" — subdomain match
-    [View in HubSpot] [Ignore] [Merge]
-
-▸ Meeting Status Mismatch (3 found)
-  • John Smith — meeting tomorrow, status is "Open" not "Meeting Scheduled"
-    Root cause: Meeting booked via Calendly,
-    n8n sync hasn't run since Feb 15
-  [View in HubSpot] [Fix Status] [Ignore]
-
-▸ Orphaned Deals (1 found)
-  • "Enterprise Plan - Q1" — no company associated
-  [View in HubSpot] [Ignore]
-
-💬 Reply to this message to add exceptions or corrections
+👉 View full report: https://reindeer-sal.vercel.app/watchdog/run/<run_id>
 ```
 
-### Action Buttons
+### Watchdog Dashboard (Web)
 
-Each violation can have up to 3 buttons:
+Full violation details and actions are in the React dashboard at `/watchdog`. See `docs/plans/2026-02-19-watchdog-dashboard-design.md` for the complete dashboard design.
 
-- **View in HubSpot** — Direct link to the record
-- **Ignore** — Adds an exception to `watchdog_exceptions` via the Fix Handler
-- **Fix [action]** — Context-specific fix (e.g., "Fix Status", "Associate Company")
-- **Merge** — For duplicates only, requires confirmation before executing
+**V1 actions available from the dashboard:**
+- **View in HubSpot** — Opens record in HubSpot
+- **Add Exception** — Writes to `watchdog_exceptions` in Supabase
+- **Mark as Fixed** — Updates `resolutions` JSONB in `watchdog_results`
 
-Button values encode the context needed to act:
-```json
-{
-  "action": "ignore",
-  "check_id": "duplicate-companies",
-  "record_type": "company",
-  "record_id": "123",
-  "record_name": "Acme Inc"
-}
-```
+**Future actions (Phase 4):**
+- **Merge** — Triggers n8n merge fix workflow
+- **Fix Status** — Triggers n8n status fix workflow
+- **Fix Associate** — Triggers n8n association fix workflow
 
 ### Slack Channels
 
@@ -988,7 +988,7 @@ Separate n8n workflows for each type of fix action:
 
 ## Implementation Phases
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation ✅
 Build the scaffolding and prove the pattern with 3 simple checks.
 
 1. Create Supabase tables (watchdog_checks, watchdog_exceptions, watchdog_results, watchdog_feedback)
@@ -1003,7 +1003,7 @@ Build the scaffolding and prove the pattern with 3 simple checks.
 
 **Deliverable:** Working daily Slack report with 3 checks.
 
-### Phase 2 — Core Tier 1 Checks
+### Phase 2 — Core Tier 1 Checks ✅
 Add remaining deterministic checks.
 
 7. `contact-multi-company`
@@ -1018,31 +1018,47 @@ Add remaining deterministic checks.
 
 **Deliverable:** Full Tier 1 coverage with hourly + daily schedules.
 
+### Phase 2.5 — Watchdog Dashboard
+Replace verbose Slack digest with a web dashboard. See `docs/plans/2026-02-19-watchdog-dashboard-design.md`.
+
+16. Add `run_id`, `run_type`, `resolutions` columns to `watchdog_results` in Supabase
+17. Build React dashboard (`/watchdog` and `/watchdog/run/:id` routes)
+18. Update daily coordinator — generate `run_id`, simplify Slack to compact summary + dashboard link
+19. Update hourly coordinator — same changes
+20. Test end-to-end: trigger run → compact Slack → click link → dashboard → use actions
+
+**V1 Dashboard Actions:**
+- View in HubSpot (link out)
+- Add Exception (writes to `watchdog_exceptions`)
+- Mark as Fixed (updates `resolutions` in `watchdog_results`)
+
+**Deliverable:** Compact Slack alerts linking to full web dashboard with resolution tracking.
+
 ### Phase 3 — AI-Powered Checks
 Add intelligent checks with LLM + HubSpot MCP.
 
-16. `smart-duplicate-companies`
-17. `sub-company-detection`
-18. `root-cause-analysis` (shared enrichment, wire into existing checks)
+21. `smart-duplicate-companies`
+22. `sub-company-detection`
+23. `root-cause-analysis` (shared enrichment, wire into existing checks)
 
 **Deliverable:** AI-powered duplicate and subsidiary detection with root cause explanations.
 
 ### Phase 4 — Feedback Loop & Actions
-Make it interactive and self-adjusting.
+Make it interactive and self-adjusting. Dashboard gets additional action buttons.
 
-19. Feedback Handler workflow (Slack reply → classify → update Supabase)
-20. Action buttons: Ignore (adds exception)
-21. Action buttons: Fix Status
-22. Action buttons: Fix Associate
-23. Action buttons: Merge (with confirmation)
+24. Feedback Handler workflow (Slack reply → classify → update Supabase)
+25. Dashboard action: Merge (triggers n8n fix-merge workflow)
+26. Dashboard action: Fix Status (triggers n8n fix-status workflow)
+27. Dashboard action: Fix Associate (triggers n8n fix-associate workflow)
 
-**Deliverable:** Full Slack interactivity — fix issues and adjust rules from Slack.
+**Deliverable:** Full interactivity from dashboard — fix issues and adjust rules.
 
 ### Phase 5 — Real-Time Layer
 Add event-driven triggers for critical checks.
 
-24. Migrate `missing-company-source` from standalone to coordinator integration
-25. Add real-time triggers for `meeting-status-mismatch`
-26. Add real-time triggers for `lifecycle-pipeline-mismatch`
+28. Migrate `missing-company-source` from standalone to coordinator integration
+29. Add real-time triggers for `meeting-status-mismatch`
+30. Add real-time triggers for `lifecycle-pipeline-mismatch`
+31. Dashboard live updates / auto-refresh for real-time violations
 
 **Deliverable:** Critical issues caught in real-time, not just on schedule.

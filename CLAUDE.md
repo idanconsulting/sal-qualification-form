@@ -2,7 +2,7 @@
 
 ## About
 
-This project powers the Reindeer AI HubSpot CRM operations — including the SAL (Sales Accepted Lead) form, lead processing automations, and company source alert workflows. The frontend is a React app (SAL form) and the backend logic runs through n8n workflows connected to HubSpot.
+This project powers the Reindeer AI HubSpot CRM operations — including the SAL (Sales Accepted Lead) form, lead processing automations, company source alert workflows, and the Watchdog Dashboard. The frontend is a React app (SAL form + Watchdog Dashboard) and the backend logic runs through n8n workflows connected to HubSpot.
 
 ## Documentation
 
@@ -70,6 +70,8 @@ To deploy workflow changes:
 A CRM data quality monitoring system that detects anomalies in HubSpot and alerts via Slack. Uses a hybrid architecture: deterministic checks (Tier 1) for clear rules, AI-powered checks (Tier 2) with LLM + HubSpot MCP for fuzzy matching. Self-adjusting via Slack feedback loop.
 
 **Design doc:** `docs/plans/2026-02-17-hubspot-data-watchdog-design.md` — contains full architecture, node-by-node workflow specs, HubSpot API calls, and Supabase schema. Always read this before making changes.
+
+**Dashboard design:** `docs/plans/2026-02-19-watchdog-dashboard-design.md` — web dashboard that replaces the verbose Slack digest. Compact Slack summary links to `/watchdog` route in the React app.
 
 ### Architecture
 
@@ -142,9 +144,10 @@ As workflows are built, add their IDs here:
 |-------|------|--------|
 | 1 | Foundation: Supabase tables, coordinator, Slack formatter, 3 starter checks | Complete |
 | 2 | Core Tier 1: remaining 8 deterministic checks + hourly coordinator | Complete |
+| 2.5 | Watchdog Dashboard: web UI replacing verbose Slack digest, resolution tracking | Not started |
 | 3 | AI-Powered: smart duplicates, sub-company detection, root cause | Not started |
-| 4 | Feedback Loop: Slack reply handler, action buttons, fix workflows | Not started |
-| 5 | Real-Time: webhook triggers for critical checks | Not started |
+| 4 | Feedback Loop: dashboard action buttons, fix workflows (merge, status, associate) | Not started |
+| 5 | Real-Time: webhook triggers for critical checks, dashboard live updates | Not started |
 
 ### How to Build a New Check
 
