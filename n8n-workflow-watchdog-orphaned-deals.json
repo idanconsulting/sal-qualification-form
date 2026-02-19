@@ -1,0 +1,107 @@
+{
+  "name": "Reindeer AI Health Check: Orphaned Deals",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-orphaned-deals",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-orphaned-deals"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/deals/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"createdate\",\n      \"operator\": \"HAS_PROPERTY\"\n    }]\n  }],\n  \"properties\": [\"dealname\", \"pipeline\", \"dealstage\", \"amount\", \"createdate\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "hubspot-search",
+      "name": "HTTP - Search All Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v4/associations/deals/companies/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.results.map(d => ({ id: d.id })) }) }}",
+        "options": {}
+      },
+      "id": "batch-associations",
+      "name": "HTTP - Get Deal Associations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const deals = $('HTTP - Search All Deals').first().json.results || [];\nconst assocResults = $('HTTP - Get Deal Associations').first().json.results || [];\n\n// Build set of deal IDs that have company associations\nconst dealsWithCompany = new Set();\nfor (const result of assocResults) {\n  const dealId = result.from?.id;\n  const companies = result.to || [];\n  if (dealId && companies.length > 0) {\n    dealsWithCompany.add(dealId);\n  }\n}\n\n// Find deals without company associations\nconst items = [];\nfor (const d of deals) {\n  if (dealsWithCompany.has(d.id)) continue;\n  const props = d.properties || {};\n  items.push({\n    record_type: 'deal',\n    record_id: d.id,\n    record_name: props.dealname || '(unnamed deal)',\n    details: `Deal \"${props.dealname}\" (${props.pipeline || 'no pipeline'}/${props.dealstage || 'no stage'}, $${props.amount || '0'}) has no company. Created ${props.createdate ? new Date(props.createdate).toISOString().split('T')[0] : 'unknown'}.`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/deal/${d.id}`\n  });\n}\n\nreturn [{\n  json: {\n    check_id: 'orphaned-deals',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'high',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "HTTP - Search All Deals", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Search All Deals": {
+      "main": [
+        [{ "node": "HTTP - Get Deal Associations", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Get Deal Associations": {
+      "main": [
+        [{ "node": "Code - Build Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Build Result": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

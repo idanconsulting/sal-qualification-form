@@ -1,0 +1,176 @@
+{
+  "name": "Reindeer AI Health Check: Meeting Status Mismatch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-meeting-status-mismatch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-meeting-status-mismatch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/meetings/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [\n      {\n        \"propertyName\": \"hs_meeting_start_time\",\n        \"operator\": \"GT\",\n        \"value\": \"{{ Date.now() }}\"\n      },\n      {\n        \"propertyName\": \"hs_meeting_start_time\",\n        \"operator\": \"LT\",\n        \"value\": \"{{ Date.now() + 7 * 24 * 60 * 60 * 1000 }}\"\n      }\n    ]\n  }],\n  \"properties\": [\"hs_meeting_title\", \"hs_meeting_start_time\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-future",
+      "name": "HTTP - Future Meetings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 200],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/meetings/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [\n      {\n        \"propertyName\": \"hs_meeting_start_time\",\n        \"operator\": \"LT\",\n        \"value\": \"{{ Date.now() }}\"\n      },\n      {\n        \"propertyName\": \"hs_meeting_start_time\",\n        \"operator\": \"GT\",\n        \"value\": \"{{ Date.now() - 7 * 24 * 60 * 60 * 1000 }}\"\n      }\n    ]\n  }],\n  \"properties\": [\"hs_meeting_title\", \"hs_meeting_start_time\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-past",
+      "name": "HTTP - Past Meetings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 400],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-meetings",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v4/associations/meetings/contacts/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $input.all().flatMap(item => (item.json.results || []).map(m => ({ id: m.id }))).filter((v, i, a) => a.findIndex(x => x.id === v.id) === i) }) }}",
+        "options": {}
+      },
+      "id": "batch-assoc-contacts",
+      "name": "HTTP - Meeting Contact Assocs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 200],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/contacts/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: ($json.results || []).flatMap(r => (r.to || []).map(t => ({ id: t.toObjectId }))).filter((v, i, a) => a.findIndex(x => x.id === v.id) === i), properties: ['firstname', 'lastname', 'email', 'hs_lead_status'] }) }}",
+        "options": {}
+      },
+      "id": "batch-read-contacts",
+      "name": "HTTP - Read Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 200],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const allMeetings = $('Merge').all().flatMap(item => item.json.results || []);\nconst assocResults = $('HTTP - Meeting Contact Assocs').first().json.results || [];\nconst contactResults = $('HTTP - Read Contacts').first().json.results || [];\nconst now = Date.now();\n\n// Build meeting-to-contact map\nconst meetingContactMap = {};\nfor (const r of assocResults) {\n  meetingContactMap[r.from?.id] = (r.to || []).map(t => t.toObjectId);\n}\n\n// Build contact lookup\nconst contactMap = {};\nfor (const c of contactResults) {\n  contactMap[c.id] = c.properties || {};\n}\n\nconst items = [];\nfor (const meeting of allMeetings) {\n  const props = meeting.properties || {};\n  const startTime = parseInt(props.hs_meeting_start_time);\n  const isFuture = startTime > now;\n  const meetingTitle = props.hs_meeting_title || '(no title)';\n  const meetingDate = new Date(startTime).toISOString().split('T')[0];\n  const expectedStatus = isFuture ? 'Meeting Scheduled' : 'Meeting Occurred';\n\n  const contactIds = meetingContactMap[meeting.id] || [];\n  for (const contactId of contactIds) {\n    const contact = contactMap[contactId] || {};\n    const currentStatus = contact.hs_lead_status || '';\n    const name = [contact.firstname, contact.lastname].filter(Boolean).join(' ') || '(no name)';\n\n    // Only flag if status doesn't match expected\n    if (currentStatus && currentStatus !== expectedStatus) {\n      items.push({\n        record_type: 'contact',\n        record_id: contactId,\n        record_name: name,\n        details: `${isFuture ? 'Future' : 'Past'} meeting \"${meetingTitle}\" (${meetingDate}) — contact status is \"${currentStatus}\", expected \"${expectedStatus}\".`,\n        hubspot_url: `https://app.hubspot.com/contacts/48653760/contact/${contactId}`\n      });\n    }\n  }\n}\n\nreturn [{\n  json: {\n    check_id: 'meeting-status-mismatch',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'critical',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Check Mismatches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "HTTP - Future Meetings", "type": "main", "index": 0 },
+          { "node": "HTTP - Past Meetings", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP - Future Meetings": {
+      "main": [
+        [{ "node": "Merge", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Past Meetings": {
+      "main": [
+        [{ "node": "Merge", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [{ "node": "HTTP - Meeting Contact Assocs", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Meeting Contact Assocs": {
+      "main": [
+        [{ "node": "HTTP - Read Contacts", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Read Contacts": {
+      "main": [
+        [{ "node": "Code - Check Mismatches", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Check Mismatches": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

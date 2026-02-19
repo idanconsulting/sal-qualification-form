@@ -1,0 +1,126 @@
+{
+  "name": "Reindeer AI Health Check: Lifecycle Pipeline Mismatch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-lifecycle-pipeline-mismatch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-lifecycle-pipeline-mismatch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/companies/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [\n      { \"propertyName\": \"num_associated_deals\", \"operator\": \"EQ\", \"value\": \"0\" },\n      { \"propertyName\": \"hs_lead_status\", \"operator\": \"EQ\", \"value\": \"Meeting Occurred\" }\n    ]\n  }],\n  \"properties\": [\"name\", \"domain\", \"hs_lead_status\", \"lifecyclestage\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-meeting-no-deals",
+      "name": "HTTP - Meeting No Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 200],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/companies/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [\n      { \"propertyName\": \"sal_last_qualification_date\", \"operator\": \"HAS_PROPERTY\" },\n      { \"propertyName\": \"lifecyclestage\", \"operator\": \"NEQ\", \"value\": \"salesqualifiedlead\" }\n    ]\n  }],\n  \"properties\": [\"name\", \"domain\", \"lifecyclestage\", \"hs_lead_status\", \"sal_last_qualification_date\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-sal-no-lifecycle",
+      "name": "HTTP - SAL No Lifecycle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 400],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const results = $input.all().map(item => item.json);\nconst items = [];\n\nfor (const searchResult of results) {\n  const companies = searchResult.results || [];\n\n  for (const c of companies) {\n    const props = c.properties || {};\n\n    if (props.hs_lead_status === 'Meeting Occurred' && !props.sal_last_qualification_date) {\n      items.push({\n        record_type: 'company',\n        record_id: c.id,\n        record_name: props.name || props.domain || '(unnamed)',\n        details: `Company has \"Meeting Occurred\" status but no deals created. Lifecycle: ${props.lifecyclestage || 'none'}. Action: create deal or update status.`,\n        hubspot_url: `https://app.hubspot.com/contacts/48653760/company/${c.id}`\n      });\n    } else if (props.sal_last_qualification_date) {\n      const daysAgo = Math.floor((Date.now() - new Date(props.sal_last_qualification_date).getTime()) / (1000 * 60 * 60 * 24));\n      items.push({\n        record_type: 'company',\n        record_id: c.id,\n        record_name: props.name || props.domain || '(unnamed)',\n        details: `SAL submitted ${daysAgo} days ago but lifecycle is \"${props.lifecyclestage}\" not \"salesqualifiedlead\". Lead status: ${props.hs_lead_status || 'none'}.`,\n        hubspot_url: `https://app.hubspot.com/contacts/48653760/company/${c.id}`\n      });\n    }\n  }\n}\n\nreturn [{\n  json: {\n    check_id: 'lifecycle-pipeline-mismatch',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'critical',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "HTTP - Meeting No Deals", "type": "main", "index": 0 },
+          { "node": "HTTP - SAL No Lifecycle", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP - Meeting No Deals": {
+      "main": [
+        [{ "node": "Merge", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - SAL No Lifecycle": {
+      "main": [
+        [{ "node": "Merge", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [{ "node": "Code - Build Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Build Result": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "name": "Reindeer AI Health Check: Duplicate Deals",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-duplicate-deals",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-duplicate-deals"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/deals/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"hs_is_closed\",\n      \"operator\": \"EQ\",\n      \"value\": \"false\"\n    }]\n  }],\n  \"properties\": [\"dealname\", \"pipeline\", \"dealstage\", \"amount\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "hubspot-search",
+      "name": "HTTP - Search Open Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v4/associations/deals/companies/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.results.map(d => ({ id: d.id })) }) }}",
+        "options": {}
+      },
+      "id": "batch-associations",
+      "name": "HTTP - Get Deal Associations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const deals = $('HTTP - Search Open Deals').first().json.results || [];\nconst assocResults = $('HTTP - Get Deal Associations').first().json.results || [];\n\n// Build deal-to-company map\nconst dealCompanyMap = {};\nfor (const result of assocResults) {\n  const dealId = result.from?.id;\n  const companyIds = (result.to || []).map(t => t.toObjectId);\n  if (dealId && companyIds.length > 0) {\n    dealCompanyMap[dealId] = companyIds;\n  }\n}\n\n// Group deals by (company_id, pipeline)\nconst groups = {};\nfor (const deal of deals) {\n  const companyIds = dealCompanyMap[deal.id] || [];\n  const pipeline = deal.properties?.pipeline || 'unknown';\n  for (const companyId of companyIds) {\n    const key = `${companyId}::${pipeline}`;\n    if (!groups[key]) groups[key] = [];\n    groups[key].push(deal);\n  }\n}\n\n// Find duplicates (groups with 2+ deals)\nconst items = [];\nfor (const [key, groupDeals] of Object.entries(groups)) {\n  if (groupDeals.length < 2) continue;\n  const [companyId, pipeline] = key.split('::');\n  const dealList = groupDeals.map(d =>\n    `\"${d.properties?.dealname}\" ($${d.properties?.amount || '0'}, ${d.properties?.dealstage})`\n  ).join(', ');\n\n  items.push({\n    record_type: 'deal',\n    record_id: groupDeals[0].id,\n    record_name: `${groupDeals.length} duplicate deals`,\n    details: `Company ${companyId} has ${groupDeals.length} open deals in pipeline \"${pipeline}\": ${dealList}`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/company/${companyId}`\n  });\n}\n\nreturn [{\n  json: {\n    check_id: 'duplicate-deals',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'high',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Find Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "HTTP - Search Open Deals", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Search Open Deals": {
+      "main": [
+        [{ "node": "HTTP - Get Deal Associations", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Get Deal Associations": {
+      "main": [
+        [{ "node": "Code - Find Duplicates", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Find Duplicates": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

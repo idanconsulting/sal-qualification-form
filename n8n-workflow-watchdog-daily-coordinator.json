@@ -37,7 +37,7 @@
       "name": "HTTP - Check Orphaned Contacts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 100]
+      "position": [480, -100]
     },
     {
       "parameters": {
@@ -49,7 +49,7 @@
       "name": "HTTP - Check Missing Contact Fields",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 300]
+      "position": [480, 100]
     },
     {
       "parameters": {
@@ -61,19 +61,91 @@
       "name": "HTTP - Check Missing Company Source",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-missing-company-name",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-missing-company-name",
+      "name": "HTTP - Check Missing Company Name",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [480, 500]
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-orphaned-companies",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-orphaned-companies",
+      "name": "HTTP - Check Orphaned Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-orphaned-deals",
+        "options": { "timeout": 60000 }
+      },
+      "id": "check-orphaned-deals",
+      "name": "HTTP - Check Orphaned Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 900]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-stale-companies",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-stale-companies",
+      "name": "HTTP - Check Stale Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 1100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-duplicate-deals",
+        "options": { "timeout": 60000 }
+      },
+      "id": "check-duplicate-deals",
+      "name": "HTTP - Check Duplicate Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 1300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-service-v39p.onrender.com/webhook/watchdog-contact-multi-company",
+        "options": { "timeout": 60000 }
+      },
+      "id": "check-contact-multi-company",
+      "name": "HTTP - Check Contact Multi-Company",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 1500]
+    },
+    {
+      "parameters": {
         "mode": "append",
-        "numberInputs": 3,
+        "numberInputs": 9,
         "options": {}
       },
       "id": "merge-results",
       "name": "Merge - Collect Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [720, 300]
+      "position": [720, 700]
     },
     {
       "parameters": {
@@ -84,7 +156,7 @@
       "name": "Code - Format Slack Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
+      "position": [960, 700]
     },
     {
       "parameters": {
@@ -107,7 +179,7 @@
       "name": "HTTP - Save to Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 500]
+      "position": [1200, 900]
     },
     {
       "parameters": {
@@ -127,7 +199,7 @@
       "name": "IF - Has Failures",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1200, 200]
+      "position": [1200, 500]
     },
     {
       "parameters": {
@@ -142,7 +214,7 @@
       "name": "HTTP - Send Slack Alert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1440, 200]
+      "position": [1440, 500]
     }
   ],
   "connections": {
@@ -150,14 +222,26 @@
       "main": [[
         { "node": "HTTP - Check Orphaned Contacts", "type": "main", "index": 0 },
         { "node": "HTTP - Check Missing Contact Fields", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Missing Company Source", "type": "main", "index": 0 }
+        { "node": "HTTP - Check Missing Company Source", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Missing Company Name", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Orphaned Companies", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Orphaned Deals", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Stale Companies", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Duplicate Deals", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Contact Multi-Company", "type": "main", "index": 0 }
       ]]
     },
     "Webhook - Manual Trigger": {
       "main": [[
         { "node": "HTTP - Check Orphaned Contacts", "type": "main", "index": 0 },
         { "node": "HTTP - Check Missing Contact Fields", "type": "main", "index": 0 },
-        { "node": "HTTP - Check Missing Company Source", "type": "main", "index": 0 }
+        { "node": "HTTP - Check Missing Company Source", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Missing Company Name", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Orphaned Companies", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Orphaned Deals", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Stale Companies", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Duplicate Deals", "type": "main", "index": 0 },
+        { "node": "HTTP - Check Contact Multi-Company", "type": "main", "index": 0 }
       ]]
     },
     "HTTP - Check Orphaned Contacts": {
@@ -168,6 +252,24 @@
     },
     "HTTP - Check Missing Company Source": {
       "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 2 }]]
+    },
+    "HTTP - Check Missing Company Name": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 3 }]]
+    },
+    "HTTP - Check Orphaned Companies": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 4 }]]
+    },
+    "HTTP - Check Orphaned Deals": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 5 }]]
+    },
+    "HTTP - Check Stale Companies": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 6 }]]
+    },
+    "HTTP - Check Duplicate Deals": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 7 }]]
+    },
+    "HTTP - Check Contact Multi-Company": {
+      "main": [[{ "node": "Merge - Collect Results", "type": "main", "index": 8 }]]
     },
     "Merge - Collect Results": {
       "main": [[{ "node": "Code - Format Slack Digest", "type": "main", "index": 0 }]]

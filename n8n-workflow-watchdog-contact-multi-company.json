@@ -1,0 +1,107 @@
+{
+  "name": "Reindeer AI Health Check: Contact Multi-Company",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-contact-multi-company",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-contact-multi-company"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"createdate\",\n      \"operator\": \"HAS_PROPERTY\"\n    }]\n  }],\n  \"sorts\": [{ \"propertyName\": \"lastmodifieddate\", \"direction\": \"DESCENDING\" }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "hubspot-search",
+      "name": "HTTP - Search Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v4/associations/contacts/companies/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.results.map(c => ({ id: c.id })) }) }}",
+        "options": {}
+      },
+      "id": "batch-associations",
+      "name": "HTTP - Get Contact Associations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const contacts = $('HTTP - Search Contacts').first().json.results || [];\nconst assocResults = $('HTTP - Get Contact Associations').first().json.results || [];\n\n// Build contact-to-companies map\nconst contactCompanyMap = {};\nfor (const result of assocResults) {\n  const contactId = result.from?.id;\n  const companyIds = (result.to || []).map(t => t.toObjectId);\n  if (contactId) {\n    contactCompanyMap[contactId] = companyIds;\n  }\n}\n\n// Find contacts with 2+ companies\nconst items = [];\nfor (const contact of contacts) {\n  const companies = contactCompanyMap[contact.id] || [];\n  if (companies.length < 2) continue;\n\n  const props = contact.properties || {};\n  const name = [props.firstname, props.lastname].filter(Boolean).join(' ') || '(no name)';\n\n  items.push({\n    record_type: 'contact',\n    record_id: contact.id,\n    record_name: name,\n    details: `Contact \"${name}\" (${props.email || 'no email'}) is associated with ${companies.length} companies (IDs: ${companies.join(', ')}).`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/contact/${contact.id}`\n  });\n}\n\nreturn [{\n  json: {\n    check_id: 'contact-multi-company',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'high',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Find Multi-Company",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "HTTP - Search Contacts", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Search Contacts": {
+      "main": [
+        [{ "node": "HTTP - Get Contact Associations", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Get Contact Associations": {
+      "main": [
+        [{ "node": "Code - Find Multi-Company", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Find Multi-Company": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

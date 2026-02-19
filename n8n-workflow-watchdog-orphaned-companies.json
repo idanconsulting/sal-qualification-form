@@ -1,0 +1,82 @@
+{
+  "name": "Reindeer AI Health Check: Orphaned Companies",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-orphaned-companies",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-orphaned-companies"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/companies/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"num_associated_contacts\",\n      \"operator\": \"EQ\",\n      \"value\": \"0\"\n    }]\n  }],\n  \"properties\": [\"name\", \"domain\", \"createdate\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "hubspot-search",
+      "name": "HTTP - Search Orphaned Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const searchResults = $('HTTP - Search Orphaned Companies').first().json;\nconst companies = searchResults.results || [];\n\nconst items = companies.map(c => {\n  const props = c.properties || {};\n  return {\n    record_type: 'company',\n    record_id: c.id,\n    record_name: props.name || props.domain || '(unnamed)',\n    details: `Company \"${props.name || '(unnamed)'}\" (domain: ${props.domain || 'none'}) has no contacts. Created ${props.createdate ? new Date(props.createdate).toISOString().split('T')[0] : 'unknown'}.`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/company/${c.id}`\n  };\n});\n\nreturn [{\n  json: {\n    check_id: 'orphaned-companies',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'medium',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "HTTP - Search Orphaned Companies", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Search Orphaned Companies": {
+      "main": [
+        [{ "node": "Code - Build Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Build Result": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

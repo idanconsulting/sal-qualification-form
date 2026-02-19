@@ -116,18 +116,18 @@ As workflows are built, add their IDs here:
 | Workflow | ID | Status |
 |----------|-----|--------|
 | Reindeer AI Health Check: Daily Coordinator | M6ODso1EOZKus5Ts | Built |
-| Watchdog Hourly Coordinator | — | Not built |
+| Reindeer AI Health Check: Hourly Coordinator | RgLCTUwsHCTCqUHk | Built |
 | Reindeer AI Health Check: Missing Company Source | aMZqzQtKG8JzjWxO | Built |
-| Watchdog: Missing Company Name | — | Not built |
+| Reindeer AI Health Check: Missing Company Name | d32LxsEhJ55s2HXm | Built |
 | Reindeer AI Health Check: Missing Contact Fields | fURDoMeWjVO3N9Ci | Built |
-| Watchdog: Contact Multi-Company | — | Not built |
+| Reindeer AI Health Check: Contact Multi-Company | ZKWXhxF5xqIA1DoZ | Built |
 | Reindeer AI Health Check: Orphaned Contacts | RHtIHuyYcFOdAmPi | Built |
-| Watchdog: Orphaned Companies | — | Not built |
-| Watchdog: Duplicate Deals | — | Not built |
-| Watchdog: Orphaned Deals | — | Not built |
-| Watchdog: Meeting Status Mismatch | — | Not built |
-| Watchdog: Lifecycle Pipeline Mismatch | — | Not built |
-| Watchdog: Stale Companies | — | Not built |
+| Reindeer AI Health Check: Orphaned Companies | LWL7ZZ7VY1j2es13 | Built |
+| Reindeer AI Health Check: Duplicate Deals | CStz0OOie0mxirU3 | Built |
+| Reindeer AI Health Check: Orphaned Deals | j19SQGPcQg0yyigs | Built |
+| Reindeer AI Health Check: Meeting Status Mismatch | UBDG6Gmj85EtJhI9 | Built |
+| Reindeer AI Health Check: Lifecycle Pipeline Mismatch | 8Agw9mlqzPtG763J | Built |
+| Reindeer AI Health Check: Stale Companies | NiPOmp8Ls3BqEqqk | Built |
 | Watchdog: Smart Duplicate Companies | — | Not built |
 | Watchdog: Sub-Company Detection | — | Not built |
 | Watchdog: Root Cause Analysis | — | Not built |
@@ -141,7 +141,7 @@ As workflows are built, add their IDs here:
 | Phase | What | Status |
 |-------|------|--------|
 | 1 | Foundation: Supabase tables, coordinator, Slack formatter, 3 starter checks | Complete |
-| 2 | Core Tier 1: remaining 8 deterministic checks | Not started |
+| 2 | Core Tier 1: remaining 8 deterministic checks + hourly coordinator | Complete |
 | 3 | AI-Powered: smart duplicates, sub-company detection, root cause | Not started |
 | 4 | Feedback Loop: Slack reply handler, action buttons, fix workflows | Not started |
 | 5 | Real-Time: webhook triggers for critical checks | Not started |
