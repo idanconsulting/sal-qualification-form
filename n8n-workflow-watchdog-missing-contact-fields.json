@@ -1,0 +1,126 @@
+{
+  "name": "Reindeer AI Health Check: Missing Contact Fields",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "watchdog-missing-contact-fields",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "watchdog-missing-contact-fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"email\",\n      \"operator\": \"NOT_HAS_PROPERTY\"\n    }]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"createdate\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-missing-email",
+      "name": "HTTP - Missing Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 200],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filterGroups\": [{\n    \"filters\": [\n      { \"propertyName\": \"firstname\", \"operator\": \"NOT_HAS_PROPERTY\" },\n      { \"propertyName\": \"lastname\", \"operator\": \"NOT_HAS_PROPERTY\" }\n    ]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"createdate\", \"hubspot_owner_id\"],\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "id": "search-missing-name",
+      "name": "HTTP - Missing Name",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 400],
+      "credentials": {
+        "hubspotAppToken": { "id": "Ic8seJpUK2XUSDQY", "name": "Reindeer" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-wait",
+      "name": "Merge - Wait",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const emailResults = $('HTTP - Missing Email').first().json;\nconst nameResults = $('HTTP - Missing Name').first().json;\n\nconst missingEmail = (emailResults.results || []);\nconst missingName = (nameResults.results || []);\n\n// Deduplicate by contact ID\nconst seen = new Set();\nconst items = [];\n\nfor (const c of missingEmail) {\n  seen.add(c.id);\n  const props = c.properties || {};\n  const name = [props.firstname, props.lastname].filter(Boolean).join(' ') || '(no name)';\n  items.push({\n    record_type: 'contact',\n    record_id: c.id,\n    record_name: name,\n    details: `Missing email. Name: \"${name}\". Created ${props.createdate ? new Date(props.createdate).toISOString().split('T')[0] : 'unknown'}.`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/contact/${c.id}`\n  });\n}\n\nfor (const c of missingName) {\n  if (seen.has(c.id)) {\n    const existing = items.find(i => i.record_id === c.id);\n    if (existing) existing.details = existing.details.replace('Missing email', 'Missing email and name');\n    continue;\n  }\n  const props = c.properties || {};\n  items.push({\n    record_type: 'contact',\n    record_id: c.id,\n    record_name: props.email || '(no name or email)',\n    details: `Missing first and last name. Email: \"${props.email || 'none'}\". Created ${props.createdate ? new Date(props.createdate).toISOString().split('T')[0] : 'unknown'}.`,\n    hubspot_url: `https://app.hubspot.com/contacts/48653760/contact/${c.id}`\n  });\n}\n\nreturn [{\n  json: {\n    check_id: 'missing-contact-fields',\n    status: items.length > 0 ? 'fail' : 'pass',\n    severity: 'medium',\n    count: items.length,\n    items: items\n  }\n}];"
+      },
+      "id": "business-logic",
+      "name": "Code - Build Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1060, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "HTTP - Missing Email", "type": "main", "index": 0 },
+          { "node": "HTTP - Missing Name", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP - Missing Email": {
+      "main": [
+        [{ "node": "Merge - Wait", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Missing Name": {
+      "main": [
+        [{ "node": "Merge - Wait", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge - Wait": {
+      "main": [
+        [{ "node": "Code - Build Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Build Result": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

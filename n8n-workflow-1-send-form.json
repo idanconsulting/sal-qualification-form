@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hubspot.com/crm/v3/objects/contacts/{{ $json.body[0].objectId }}",
+        "url": "=https://api.hubspot.com/crm/v3/objects/companies/{{ $json.body[0].objectId }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "hubspotAppToken",
         "sendQuery": true,
@@ -28,14 +28,14 @@
           "parameters": [
             {
               "name": "properties",
-              "value": "firstname,lastname,email,hubspot_owner_id,last_meeting_record_id,associatedcompanyid"
+              "value": "name,domain,hubspot_owner_id,lead_source,sdr_owner,ae_owner,sal_last_meeting_record_id"
             }
           ]
         },
         "options": {}
       },
-      "id": "http-get-contact",
-      "name": "HTTP - Get Contact",
+      "id": "http-get-company",
+      "name": "HTTP - Get Company",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
@@ -51,7 +51,7 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hubspot.com/crm/v3/objects/meetings/{{ $json.properties.last_meeting_record_id }}",
+        "url": "=https://api.hubspot.com/crm/v3/objects/meetings/{{ $json.properties.sal_last_meeting_record_id }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "hubspotAppToken",
         "sendQuery": true,
@@ -82,26 +82,17 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hubspot.com/crm/v3/objects/companies/{{ $node[\"HTTP - Get Contact\"].json.properties.associatedcompanyid }}",
+        "url": "=https://api.hubspot.com/crm/v3/objects/meetings/{{ $json.id }}/associations/contacts",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "hubspotAppToken",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "properties",
-              "value": "name,domain,hubspot_owner_id,lead_source"
-            }
-          ]
-        },
         "options": {}
       },
-      "id": "http-get-company",
-      "name": "HTTP - Get Company",
+      "id": "http-get-contact-associations",
+      "name": "HTTP - Get Contact Associations",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        912,
+        928,
         304
       ],
       "credentials": {
@@ -113,7 +104,33 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Meeting\"].json.properties.hubspot_owner_id }}",
+        "method": "POST",
+        "url": "https://api.hubspot.com/crm/v3/objects/contacts/batch/read",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": [\"firstname\", \"lastname\", \"email\"],\n  \"inputs\": {{ JSON.stringify($json.results.map(r => ({ \"id\": r.id }))) }}\n}",
+        "options": {}
+      },
+      "id": "http-get-contact-details",
+      "name": "HTTP - Get Contact Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1152,
+        304
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "Ic8seJpUK2XUSDQY",
+          "name": "Reindeer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Company\"].json.properties.ae_owner || $node[\"HTTP - Get Company\"].json.properties.hubspot_owner_id }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "hubspotAppToken",
         "options": {}
@@ -123,7 +140,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1136,
+        1376,
         304
       ],
       "credentials": {
@@ -135,7 +152,7 @@
     },
     {
       "parameters": {
-        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Company\"].json.properties.hubspot_owner_id }}",
+        "url": "=https://api.hubspot.com/crm/v3/owners/{{ $node[\"HTTP - Get Company\"].json.properties.sdr_owner || $node[\"HTTP - Get Company\"].json.properties.hubspot_owner_id }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "hubspotAppToken",
         "options": {}
@@ -145,7 +162,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1360,
+        1600,
         304
       ],
       "credentials": {
@@ -157,22 +174,22 @@
     },
     {
       "parameters": {
-        "jsCode": "const contact = $node[\"HTTP - Get Contact\"].json;\nconst meeting = $node[\"HTTP - Get Meeting\"].json;\nconst company = $node[\"HTTP - Get Company\"].json;\nconst aeOwner = $node[\"HTTP - Get AE Owner\"].json;\nconst sdrOwner = $input.first().json;\n\nlet meetingDate = \"\";\nif (meeting.properties.hs_meeting_start_time) {\n  try {\n    const date = new Date(meeting.properties.hs_meeting_start_time);\n    meetingDate = date.toLocaleDateString(\"en-US\", {\n      weekday: \"long\",\n      year: \"numeric\",\n      month: \"long\",\n      day: \"numeric\",\n      hour: \"2-digit\",\n      minute: \"2-digit\"\n    });\n  } catch (e) {\n    meetingDate = meeting.properties.hs_meeting_start_time;\n  }\n}\n\nconst contactName = `${contact.properties.firstname || \"\"} ${contact.properties.lastname || \"\"}`.trim() || \"Unknown\";\n\nconst aeName = aeOwner ? `${aeOwner.firstName || \"\"} ${aeOwner.lastName || \"\"}`.trim() : \"Unknown AE\";\nconst aeEmail = aeOwner ? aeOwner.email : \"\";\n\nconst sdrName = sdrOwner ? `${sdrOwner.firstName || \"\"} ${sdrOwner.lastName || \"\"}`.trim() : \"Unknown SDR\";\nconst sdrEmail = sdrOwner ? sdrOwner.email : \"\";\n\nconst formData = {\n  contactId: contact.id,\n  contactName: contactName,\n  contactEmail: contact.properties.email || \"\",\n  companyId: company.id,\n  companyName: company.properties.name || \"Unknown\",\n  companyDomain: company.properties.domain || \"\",\n  source: company.properties.lead_source || \"\",\n  meetingId: meeting.id,\n  meetingTitle: meeting.properties.hs_meeting_title || \"\",\n  meetingDate: meetingDate,\n  aeName: aeName,\n  aeEmail: aeEmail,\n  aeOwnerId: aeOwner ? aeOwner.id : \"\",\n  sdrName: sdrName,\n  sdrEmail: sdrEmail,\n  sdrOwnerId: sdrOwner ? sdrOwner.id : \"\"\n};\n\nconst token = Buffer.from(JSON.stringify(formData)).toString(\"base64\");\nconst formUrl = `https://sal-qualification-form.vercel.app?token=${token}`;\n\nreturn {\n  json: {\n    ...formData,\n    token: token,\n    formUrl: formUrl\n  }\n};"
+        "jsCode": "const company = $node[\"HTTP - Get Company\"].json;\nconst meeting = $node[\"HTTP - Get Meeting\"].json;\nconst contactsData = $node[\"HTTP - Get Contact Details\"].json;\nconst aeOwner = $node[\"HTTP - Get AE Owner\"].json;\nconst sdrOwner = $input.first().json;\n\nlet meetingDate = \"\";\nif (meeting.properties.hs_meeting_start_time) {\n  try {\n    const date = new Date(meeting.properties.hs_meeting_start_time);\n    meetingDate = date.toLocaleDateString(\"en-US\", {\n      weekday: \"long\",\n      year: \"numeric\",\n      month: \"long\",\n      day: \"numeric\",\n      hour: \"2-digit\",\n      minute: \"2-digit\"\n    });\n  } catch (e) {\n    meetingDate = meeting.properties.hs_meeting_start_time;\n  }\n}\n\n// Build contacts array from batch read results\nconst contacts = (contactsData.results || []).map(contact => {\n  const contactName = `${contact.properties.firstname || \"\"} ${contact.properties.lastname || \"\"}`.trim() || \"Unknown\";\n  return {\n    contactId: contact.id,\n    contactName: contactName,\n    contactEmail: contact.properties.email || \"\"\n  };\n});\n\n// Meeting-based AE routing\nconst meetingHost = meeting.properties.hubspot_owner_id || \"\";\nconst attendeeIds = (meeting.properties.hs_attendee_owner_ids || \"\").split(\";\").map(id => id.trim()).filter(Boolean);\nconst allParticipantIds = [meetingHost, ...attendeeIds];\n\nconst YOAV_IDS = [\"76222677\", \"75650460\"];\nconst YAIR_IDS = [\"76301426\", \"75813016\"];\nconst SDR_IDS = [\"87078486\", \"76139933\", \"75629883\"];\n\nlet aeName, aeEmail, aeOwnerId;\n\nif (YOAV_IDS.some(id => allParticipantIds.includes(id))) {\n  aeName = \"Yoav Naveh\";\n  aeEmail = \"yoav@reindeer.ai\";\n  aeOwnerId = \"76222677\";\n} else if (YAIR_IDS.some(id => allParticipantIds.includes(id))) {\n  aeName = \"Yair Weinberger\";\n  aeEmail = \"yair@reindeer.ai\";\n  aeOwnerId = \"76301426\";\n} else if (aeOwner && aeOwner.email && !SDR_IDS.includes(aeOwner.id)) {\n  aeName = `${aeOwner.firstName || \"\"} ${aeOwner.lastName || \"\"}`.trim() || \"Unknown AE\";\n  aeEmail = aeOwner.email;\n  aeOwnerId = aeOwner.id || \"\";\n} else {\n  aeName = \"Idan Ron\";\n  aeEmail = \"idan.ron@reindeerlabs.ai\";\n  aeOwnerId = \"86787169\";\n}\n\nconst sdrName = sdrOwner ? `${sdrOwner.firstName || \"\"} ${sdrOwner.lastName || \"\"}`.trim() : \"Unknown SDR\";\nconst sdrEmail = sdrOwner ? sdrOwner.email : \"\";\n\nconst formData = {\n  companyId: company.id,\n  companyName: company.properties.name || \"Unknown\",\n  companyDomain: company.properties.domain || \"\",\n  source: company.properties.lead_source || \"\",\n  meetingId: meeting.id,\n  meetingTitle: meeting.properties.hs_meeting_title || \"\",\n  meetingDate: meetingDate,\n  contacts: contacts,\n  aeName: aeName,\n  aeEmail: aeEmail,\n  aeOwnerId: aeOwnerId,\n  sdrName: sdrName,\n  sdrEmail: sdrEmail,\n  sdrOwnerId: sdrOwner ? sdrOwner.id : \"\",\n  additionalAttendeeOwnerIds: meeting.properties.hs_attendee_owner_ids || \"\",\n  guestEmails: meeting.properties.hs_guest_emails || \"\"\n};\n\nconst token = Buffer.from(JSON.stringify(formData)).toString(\"base64\");\nconst formUrl = `https://sal-qualification-form.vercel.app?token=${token}`;\n\nreturn {\n  json: {\n    ...formData,\n    token: token,\n    formUrl: formUrl\n  }\n};"
       },
       "id": "code-prepare-form-data",
       "name": "Code - Prepare Form Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1584,
+        1824,
         304
       ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.sdrEmail }}",
-        "subject": "=SAL Qualification Form - {{ $json.contactName }} at {{ $json.companyName }}",
-        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <h2 style=\"color: #333; margin-bottom: 20px;\">SAL Qualification Form</h2>\n  <p style=\"color: #555; font-size: 16px;\">Hi {{ $json.aeName }},</p>\n  <p style=\"color: #555; font-size: 16px;\">Please complete the SAL qualification form for your recent meeting:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9; border-radius: 8px;\">\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Contact:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.contactName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Meeting:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.meetingTitle }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px;\"><strong>Date:</strong></td>\n      <td style=\"padding: 12px 16px;\">{{ $json.meetingDate }}</td>\n    </tr>\n  </table>\n  <p style=\"text-align: center; margin: 30px 0;\">\n    <a href=\"{{ $json.formUrl }}\" style=\"background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;\">Complete SAL Form</a>\n  </p>\n  <p style=\"color: #999; font-size: 12px; margin-top: 30px; text-align: center;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
+        "sendTo": "={{ $json.aeEmail }}",
+        "subject": "=SAL Qualification Form - {{ $json.contacts.map(c => c.contactName).join(', ') }} at {{ $json.companyName }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <h2 style=\"color: #333; margin-bottom: 20px;\">SAL Qualification Form</h2>\n  <p style=\"color: #555; font-size: 16px;\">Hi {{ $json.aeName }},</p>\n  <p style=\"color: #555; font-size: 16px;\">Please complete the SAL qualification form for your recent meeting:</p>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9; border-radius: 8px;\">\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Contacts:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.contacts.map(c => c.contactName).join(', ') }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Company:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.companyName }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\"><strong>Meeting:</strong></td>\n      <td style=\"padding: 12px 16px; border-bottom: 1px solid #eee;\">{{ $json.meetingTitle }}</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 12px 16px;\"><strong>Date:</strong></td>\n      <td style=\"padding: 12px 16px;\">{{ $json.meetingDate }}</td>\n    </tr>\n  </table>\n  <p style=\"text-align: center; margin: 30px 0;\">\n    <a href=\"{{ $json.formUrl }}\" style=\"background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;\">Complete SAL Form</a>\n  </p>\n  <p style=\"color: #999; font-size: 12px; margin-top: 30px; text-align: center;\">This is an automated message from the SAL Qualification System.</p>\n</div>",
         "options": {
           "appendAttribution": false,
           "bccList": "idan.ron@reindeerlabs.ai, galia.n@reindeer.ai"
@@ -183,7 +200,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        1792,
+        2048,
         304
       ],
       "webhookId": "0a50ebdf-d916-4e1c-835d-f86ac4949987",
@@ -205,7 +222,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2016,
+        2272,
         304
       ]
     }
@@ -215,14 +232,14 @@
       "main": [
         [
           {
-            "node": "HTTP - Get Contact",
+            "node": "HTTP - Get Company",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP - Get Contact": {
+    "HTTP - Get Company": {
       "main": [
         [
           {
@@ -237,14 +254,25 @@
       "main": [
         [
           {
-            "node": "HTTP - Get Company",
+            "node": "HTTP - Get Contact Associations",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP - Get Company": {
+    "HTTP - Get Contact Associations": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Get Contact Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Get Contact Details": {
       "main": [
         [
           {
